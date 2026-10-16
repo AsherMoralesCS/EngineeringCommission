@@ -18,8 +18,9 @@ Tkinter ships with most desktop Python installations. On Debian/Ubuntu, install 
 4. Enter angles as decimal degrees (`125.5`), DMS (`125°30'00"`), or colon-separated DMS (`125:30:00`). In azimuth mode, full quadrantal text such as `N 30 E` also works.
 5. Optionally enter initial coordinates and select metres or feet. The unit selector labels the supplied numbers; it does not convert them.
 6. Click **Solve Traverse**. Review solved quantities, closure, area, the complete side table, coordinates, and calculation details in the tabs.
-7. If multiple solutions exist, review each with the solution selector. Extra engineering constraints are required to select between them. Every solution is included in TXT/CSV exports.
-8. Use **Plot Traverse** or **Export Results**. Matplotlib's plot toolbar also supports image saving. Editing inputs invalidates previous results and closes their plot.
+7. The live plot beside the results previews known geometry before solving. Blue sides are known, red sides were solved, and dashed amber spans are closure-assumption guides. A span across several omitted sides is not an estimate of those individual sides. Known sides trapped between omissions remain unpositioned until solving. Drag the divider to resize the plot and results.
+8. If multiple solutions exist, review each with the solution selector. Extra engineering constraints are required to select between them. Every solution is included in TXT/CSV exports.
+9. Use **Plot Traverse** for an enlarged view or **Export Results** for reports. Both the embedded and enlarged views update when you solve or change the selected solution. Matplotlib's toolbar supports zoom, pan, and image saving. Editing inputs invalidates previous numerical results and refreshes the unsolved preview. The built-in Canvas plot remains available without Matplotlib.
 
 **Load Example** provides an 80 × 100 rectangle with omitted values for each of the four cases. Select the case beside the button, load it, then solve. Case IV demonstrates two valid solutions; one crosses itself, so its polygon area is unavailable.
 
@@ -44,7 +45,7 @@ Run the embedded numerical tests without a display or optional packages:
 python traverse_solver.py --self-test
 ```
 
-The suite covers all four examples, 240 rotated/scaled pentagon problems, decimal/DMS and quadrant conversion, multiple roots, tangency, impossible/singular/indeterminate data, area validity, coordinate offsets, and both report formats.
+The suite covers all four examples, 240 rotated/scaled pentagon problems, decimal/DMS and quadrant conversion, multiple roots, tangency, impossible/singular/indeterminate data, area validity, coordinate offsets, preview station placement, solved-side highlighting, and both report formats.
 
 With a graphical display available, exercise the actual GUI widgets and plotting/export paths:
 
@@ -52,4 +53,4 @@ With a graphical display available, exercise the actual GUI widgets and plotting
 python traverse_solver.py --gui-test
 ```
 
-The GUI smoke test covers all four cases in both input formats, alternative solution selection, Matplotlib and built-in plotting, TXT/CSV export dialogs, 20-side generation, clear, and invalid input. On a headless Linux machine, a virtual X display is needed for this check; numerical tests remain display-independent.
+The GUI smoke test covers all four cases in both input formats, alternative solution selection, live previews, embedded and enlarged Matplotlib/built-in plots, TXT/CSV export dialogs, 20-side generation, clear, and invalid input. On a headless Linux machine, a virtual X display is needed for this check; numerical tests remain display-independent.

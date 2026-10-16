@@ -454,6 +454,155 @@ def export_report(path, inputs, case, solutions, details, unit, selected=0):
                 stream.write("\t".join(str(value) for value in row) + "\n")
 
 
+@dataclass
+class PlotData:
+    points: dict[int, tuple[float, float]]
+    edges: list[tuple[int, int, str]]  # start, end, known/solved/unknown
+    title: str
+    note: str
+    side_count: int
+
+
+def build_plot_data(sides, initial_e=0.0, initial_n=0.0, solution=None, solution_index=0):
+    """Locate only justified stations; missing spans are guides, never invented sides."""
+    count = len(sides)
+    if solution is not None:
+        points = dict(enumerate(solution.coordinates))
+        edges = [(i, i + 1, "solved" if sides[i].length is None or sides[i].azimuth is None
+                  else "known") for i in range(count)]
+        return PlotData(points, edges, f"Solved Closed Traverse · Solution {solution_index + 1}",
+                        "Blue: known   Red: solved   Orange marker: start" +
+                        ("\nWarning: " + " ".join(solution.warnings) if solution.warnings else ""), count)
+    points = {0: (initial_e, initial_n)}
+    complete = lambda s: s.length is not None and s.azimuth is not None
+    for i, side in enumerate(sides):
+        if not complete(side):
+            break
+        east, north = vector(side)
+        points[i + 1] = (points[i][0] + east, points[i][1] + north)
+    omitted = any(not complete(s) for s in sides)
+    if omitted:
+        # The backward chain is anchored at the assumed closed endpoint.
+        points[count] = (initial_e, initial_n)
+        for i in range(count - 1, -1, -1):
+            if not complete(sides[i]):
+                break
+            east, north = vector(sides[i])
+            points[i] = (points[i + 1][0] - east, points[i + 1][1] - north)
+    if any(not math.isfinite(value) for point in points.values() for value in point):
+        raise TraverseError("Preview coordinates exceed the supported floating-point range.")
+    edges = []
+    ordered = sorted(points)
+    for first, second in zip(ordered, ordered[1:]):
+        kind = "known" if second == first + 1 and complete(sides[first]) else "unknown"
+        edges.append((first, second, kind))
+    hidden = sum(complete(s) and (i not in points or i + 1 not in points)
+                 for i, s in enumerate(sides))
+    note = ("Unsolved preview · dashed amber spans assume closure; they are not solved geometry."
+            if omitted else "Known input geometry · closure has not been imposed.")
+    if hidden:
+        note += f"\n{hidden} known side(s) lie between omissions and cannot yet be positioned."
+    return PlotData(points, edges, "Traverse Preview" + (" (unsolved)" if omitted else ""), note, count)
+
+
+class TraversePlot:
+    """Reusable embedded/pop-out plot, with Matplotlib and standard-library renderers."""
+    COLORS = {"known": "#2563eb", "solved": "#e11d48", "unknown": "#d18b09"}
+
+    def __init__(self, parent):
+        import tkinter as tk
+        from tkinter import ttk
+        self.data = None
+        self.unit = "m"
+        self.figure = None
+        self.note = ttk.Label(parent, wraplength=440, padding=(8, 5), justify="left")
+        self.note.pack(side="bottom", fill="x")
+        try:
+            from matplotlib.figure import Figure
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+        except ImportError:
+            self.canvas = tk.Canvas(parent, bg="#f0f9ff", width=440, height=300, highlightthickness=0)
+            self.canvas.pack(fill="both", expand=True)
+            self.canvas.bind("<Configure>", lambda _: self.redraw())
+        else:
+            self.figure = Figure(figsize=(4.4, 3.2), dpi=100, layout="constrained")
+            self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
+            toolbar = NavigationToolbar2Tk(self.canvas, parent, pack_toolbar=False)
+            toolbar.pack(side="bottom", fill="x")
+            self.canvas.get_tk_widget().pack(fill="both", expand=True)
+        self.render(None, "m")
+
+    def render(self, data, unit, message="Enter known values to preview the traverse."):
+        self.data, self.unit = data, unit
+        note = data.note if data else message
+        if self.figure is None:
+            note += "\nBuilt-in plot · install Matplotlib for zoom and image saving."
+        self.note.configure(text=note)
+        self.redraw()
+
+    def redraw(self):
+        data = self.data
+        if self.figure is not None:
+            self.figure.clear()
+            axes = self.figure.add_subplot(111)
+            axes.set_facecolor("#f0f9ff")
+            if data:
+                for first, second, kind in data.edges:
+                    a, b = data.points[first], data.points[second]
+                    color = self.COLORS[kind]
+                    axes.plot([a[0], b[0]], [a[1], b[1]], "--" if kind == "unknown" else "-",
+                              linewidth=2, color=color)
+                    if kind != "unknown":
+                        axes.annotate("", xy=b, xytext=a, arrowprops={"arrowstyle": "->", "color": color})
+                    else:
+                        axes.annotate("Unknown span", ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2),
+                                      xytext=(5, 5), textcoords="offset points", fontsize=8, color=color)
+                for i, (east, north) in data.points.items():
+                    # The closed endpoint is already labeled P1 at the start.
+                    if i == data.side_count and math.dist((east, north), data.points[0]) <= 1e-8:
+                        continue
+                    axes.plot(east, north, "o", color="#d35e35" if i == 0 else "#18314b", markersize=6)
+                    axes.annotate(f"P{i + 1}" if i < data.side_count else "Return", (east, north),
+                                  xytext=(6, 6), textcoords="offset points", fontsize=9)
+            axes.set_title(data.title if data else "Traverse Plot", fontsize=10)
+            axes.set(xlabel=f"Easting / Departure ({self.unit})",
+                     ylabel=f"Northing / Latitude ({self.unit})")
+            axes.set_aspect("equal", adjustable="datalim")
+            axes.grid(True, linestyle="--", alpha=0.3)
+            axes.margins(0.18)
+            self.canvas.draw()
+            return
+        canvas = self.canvas
+        canvas.delete("all")
+        width, height = max(canvas.winfo_width(), 240), max(canvas.winfo_height(), 200)
+        for x in range(35, width, 35):
+            canvas.create_line(x, 35, x, height - 35, fill="#dbe8f4")
+        for y in range(35, height, 35):
+            canvas.create_line(35, y, width - 35, y, fill="#dbe8f4")
+        canvas.create_text(width / 2, 18, text=data.title if data else "Traverse Plot")
+        if not data:
+            canvas.create_text(width / 2, height / 2, text="Enter known values to preview.")
+            return
+        points = list(data.points.values())
+        min_e, max_e = min(e for e, _ in points), max(e for e, _ in points)
+        min_n, max_n = min(n for _, n in points), max(n for _, n in points)
+        scale = min((width - 100) / max(max_e - min_e, 1e-100),
+                    (height - 100) / max(max_n - min_n, 1e-100))
+        center_e, center_n = (min_e + max_e) / 2, (min_n + max_n) / 2
+        mapped = {i: (width / 2 + (e - center_e) * scale, height / 2 - (n - center_n) * scale)
+                  for i, (e, n) in data.points.items()}
+        for first, second, kind in data.edges:
+            canvas.create_line(*mapped[first], *mapped[second], fill=self.COLORS[kind], width=2,
+                               dash=(6, 4) if kind == "unknown" else (),
+                               arrow="none" if kind == "unknown" else "last", tags=(kind,))
+        for i, (x, y) in mapped.items():
+            if i == data.side_count and math.dist(data.points[i], data.points[0]) <= 1e-8:
+                continue
+            canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#d35e35" if i == 0 else "#18314b")
+            canvas.create_text(x + 12, y - 12, text=f"P{i + 1}" if i < data.side_count else "Return")
+        canvas.create_text(width / 2, height - 16, text=f"E → / N ↑ ({self.unit}) · Equal scale")
+
+
 # Tk imports are deferred so the mathematical tests run on headless machines.
 class TraverseApp:
     def __init__(self, root):
@@ -469,13 +618,13 @@ class TraverseApp:
         self.solutions = []
         self.inputs = []
         self.plot_window = None
-        self.plot_canvas = None
-        self.figure = None
+        self.popup_plot = None
+        self.preview_job = None
         self.suspend = False
         self.last_format = "Azimuth"
         root.title("Engineering 1035 · Traverse Solver")
-        root.geometry("1250x900")
-        root.minsize(900, 680)
+        root.geometry("1350x940")
+        root.minsize(1000, 760)
         root.configure(bg="#edf2f7")
         style = ttk.Style(root)
         style.theme_use("clam")
@@ -526,7 +675,7 @@ class TraverseApp:
                   if e.widget is root else None)
         table_frame = ttk.Frame(main)
         table_frame.pack(fill="x")
-        self.input_canvas = tk.Canvas(table_frame, height=200, bg="white", highlightthickness=0)
+        self.input_canvas = tk.Canvas(table_frame, height=160, bg="white", highlightthickness=0)
         scroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.input_canvas.yview)
         self.input_canvas.configure(yscrollcommand=scroll.set)
         self.input_canvas.pack(side="left", fill="both", expand=True)
@@ -554,8 +703,15 @@ class TraverseApp:
         self.solution_choice = ttk.Combobox(solution_bar, state="disabled", width=16)
         self.solution_choice.pack(side="right")
         self.solution_choice.bind("<<ComboboxSelected>>", lambda _: self.show_solution())
-        tabs = ttk.Notebook(main)
-        tabs.pack(fill="both", expand=True)
+        self.result_panes = ttk.Panedwindow(main, orient="horizontal")
+        self.result_panes.pack(fill="both", expand=True)
+        tabs = ttk.Notebook(self.result_panes)
+        self.result_panes.add(tabs, weight=3)
+        plot_frame = ttk.LabelFrame(self.result_panes, text="Traverse Plot · Live preview", padding=4)
+        self.result_panes.add(plot_frame, weight=2)
+        self.result_panes.bind("<Map>", lambda _: root.after_idle(
+            lambda: self.result_panes.sashpos(0, int(self.result_panes.winfo_width() * 0.53))))
+        self.embedded_plot = TraversePlot(plot_frame)
         self.summary = self.text_tab(tabs, "Results")
         calculations = ttk.Frame(tabs)
         tabs.add(calculations, text="Calculation Table")
@@ -616,8 +772,12 @@ class TraverseApp:
         self.set_text(self.details_box, "")
         for tree in (self.calculation_table, self.coordinate_table):
             tree.delete(*tree.get_children())
-        self.close_plot()
         self.update_case()
+        if self.embedded_plot.data is not None:
+            self.embedded_plot.render(None, self.unit.get(), "Inputs changed — updating preview…")
+        if self.preview_job is not None:
+            self.root.after_cancel(self.preview_job)
+        self.preview_job = self.root.after(180, self.refresh_preview)
 
     def update_case(self):
         try:
@@ -814,83 +974,67 @@ class TraverseApp:
         for i, (east, north) in enumerate(solution.coordinates):
             name = f"P{i + 1}" if i < len(solution.sides) else "Return to P1"
             self.coordinate_table.insert("", "end", values=(name, f"{north:.4f}", f"{east:.4f}"))
-        if self.plot_window is not None:
+        if self.preview_job is not None:
+            self.root.after_cancel(self.preview_job)
+            self.preview_job = None
+        self.draw_plot()
+
+    def refresh_preview(self):
+        if self.preview_job is not None:
+            self.root.after_cancel(self.preview_job)
+        self.preview_job = None
+        if self.solutions:
             self.draw_plot()
+            return
+        try:
+            sides = self.read_inputs()
+            for side in sides:
+                if side.length is not None and side.length <= 0:
+                    raise TraverseError("Known lengths must be positive.")
+            data = build_plot_data(sides, number(self.initial_e.get(), "Initial Easting"),
+                                   number(self.initial_n.get(), "Initial Northing"))
+        except (TraverseError, ArithmeticError, ValueError) as error:
+            self.embedded_plot.render(None, self.unit.get(), f"Preview unavailable: {error}")
+            if self.popup_plot is not None:
+                self.popup_plot.render(None, self.unit.get(), f"Preview unavailable: {error}")
+            self.plot_button.configure(state="disabled")
+            return
+        self.plot_button.configure(state="normal")
+        self.embedded_plot.render(data, self.unit.get())
+        if self.popup_plot is not None:
+            self.popup_plot.render(data, self.unit.get())
 
     def close_plot(self):
         if self.plot_window is not None:
             self.plot_window.destroy()
             self.plot_window = None
-        self.plot_canvas = None
-        self.figure = None
+        self.popup_plot = None
 
     def plot(self):
+        if self.preview_job is not None:
+            self.root.after_cancel(self.preview_job)
+            self.preview_job = None
         if not self.solutions:
+            self.refresh_preview()
+        if self.embedded_plot.data is None:
             return
         if self.plot_window is None:
             self.plot_window = self.tk.Toplevel(self.root)
-            self.plot_window.title("Solved Closed Traverse")
-            self.plot_window.geometry("780x620")
+            self.plot_window.title("Engineering Traverse Plot")
+            self.plot_window.geometry("820x680")
             self.plot_window.protocol("WM_DELETE_WINDOW", self.close_plot)
-            try:
-                from matplotlib.figure import Figure
-                from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-            except ImportError:
-                self.ttk.Label(self.plot_window, text="Matplotlib unavailable — using built-in plot. "
-                               "Install matplotlib for zoom and image export.").pack(fill="x")
-                self.plot_canvas = self.tk.Canvas(self.plot_window, bg="white", width=760, height=560)
-                self.plot_canvas.pack(fill="both", expand=True)
-                self.plot_canvas.bind("<Configure>", lambda _: self.draw_plot())
-            else:
-                self.figure = Figure(figsize=(7.8, 5.6), dpi=100, layout="constrained")
-                self.plot_canvas = FigureCanvasTkAgg(self.figure, master=self.plot_window)
-                self.plot_canvas.get_tk_widget().pack(fill="both", expand=True)
-                NavigationToolbar2Tk(self.plot_canvas, self.plot_window)
-        self.draw_plot()
+            self.popup_plot = TraversePlot(self.plot_window)
+        self.popup_plot.render(self.embedded_plot.data, self.unit.get())
         self.plot_window.lift()
 
     def draw_plot(self):
-        if not self.solutions or self.plot_canvas is None:
+        if not self.solutions:
             return
-        solution = self.solutions[max(0, self.solution_choice.current())]
-        # Include the computed return point, then explicitly close to the start.
-        points = solution.coordinates + [solution.coordinates[0]]
-        if self.figure is not None:
-            self.figure.clear()
-            axes = self.figure.add_subplot(111)
-            axes.plot([e for e, _ in points], [n for _, n in points], "o-", color="#126d81", linewidth=2)
-            axes.scatter(*points[0], color="#d35e35", s=100, zorder=4, label="Start / P1")
-            for i, (east, north) in enumerate(points[:-2], 1):
-                axes.annotate(f"P{i}", (east, north), xytext=(7, 7), textcoords="offset points")
-            for start, end in zip(points, points[1:]):
-                axes.annotate("", xy=end, xytext=start, arrowprops={"arrowstyle": "->", "color": "#126d81"})
-            axes.set(title=f"Solved Closed Traverse · Solution {self.solution_choice.current() + 1}",
-                     xlabel=f"Easting ({self.unit.get()})", ylabel=f"Northing ({self.unit.get()})")
-            axes.set_aspect("equal", adjustable="datalim")
-            axes.grid(True, alpha=0.3)
-            axes.legend()
-            self.plot_canvas.draw()
-        else:
-            canvas = self.plot_canvas
-            canvas.delete("all")
-            width, height = max(canvas.winfo_width(), 300), max(canvas.winfo_height(), 300)
-            min_e, max_e = min(e for e, _ in points), max(e for e, _ in points)
-            min_n, max_n = min(n for _, n in points), max(n for _, n in points)
-            scale = min((width - 120) / max(max_e - min_e, 1e-100), (height - 120) / max(max_n - min_n, 1e-100))
-            center_e, center_n = (min_e + max_e) / 2, (min_n + max_n) / 2
-            mapped = [(width / 2 + (e - center_e) * scale, height / 2 - (n - center_n) * scale) for e, n in points]
-            for x in range(40, width, 40):
-                canvas.create_line(x, 40, x, height - 40, fill="#edf2f7")
-            for y in range(40, height, 40):
-                canvas.create_line(40, y, width - 40, y, fill="#edf2f7")
-            for a, b in zip(mapped, mapped[1:]):
-                canvas.create_line(*a, *b, fill="#126d81", width=2, arrow="last")
-            for i, (x, y) in enumerate(mapped[:-2]):
-                canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#d35e35" if i == 0 else "#126d81")
-                canvas.create_text(x + 12, y - 12, text=f"P{i + 1}")
-            canvas.create_text(width / 2, 20, text=f"Solved Closed Traverse · E → / N ↑ ({self.unit.get()})")
-            canvas.create_text(width / 2, height - 18, text=f"Easting: {min_e:.4f} … {max_e:.4f}   "
-                                      f"Northing: {min_n:.4f} … {max_n:.4f} · Equal scale")
+        index = max(0, self.solution_choice.current())
+        data = build_plot_data(self.inputs, solution=self.solutions[index], solution_index=index)
+        self.embedded_plot.render(data, self.unit.get())
+        if self.popup_plot is not None:
+            self.popup_plot.render(data, self.unit.get())
 
     def export(self):
         from tkinter import filedialog, messagebox
@@ -910,6 +1054,31 @@ class TraverseApp:
 
 
 class SolverTests(unittest.TestCase):
+    def test_preview_and_solved_plot_geometry(self):
+        for case in range(4):
+            sides = example(case)
+            data = build_plot_data(sides, 120, 340)
+            self.assertEqual(data.points[0], (120, 340))
+            self.assertEqual(data.points[4], (120, 340))
+            self.assertTrue(any(kind == "unknown" for _, _, kind in data.edges))
+            self.assertIn("assume closure", data.note)
+            _, solutions, _ = TraverseSolver().solve(sides, 120, 340)
+            for i, solution in enumerate(solutions):
+                plotted = build_plot_data(sides, solution=solution, solution_index=i)
+                self.assertEqual(len(plotted.edges), 4)
+                self.assertEqual(list(plotted.points.values()), solution.coordinates)
+                expected = sum(s.length is None or s.azimuth is None for s in sides)
+                self.assertEqual(sum(kind == "solved" for _, _, kind in plotted.edges), expected)
+        separated = example(1)
+        data = build_plot_data(separated)
+        self.assertNotIn(2, data.points)
+        self.assertIn("cannot yet be positioned", data.note)
+        self.assertIn((0, 3, "unknown"), data.edges)
+        all_known = [TraverseSide(1, 0), TraverseSide(1, 90), TraverseSide(1, 180)]
+        data = build_plot_data(all_known)
+        self.assertNotEqual(data.points[3], data.points[0])
+        self.assertTrue(all(kind == "known" for _, _, kind in data.edges))
+
     def test_all_examples(self):
         for case in range(4):
             with self.subTest(case=case):
@@ -1040,7 +1209,12 @@ def gui_smoke_test(root, app):
         for case_name in ("Case I", "Case II", "Case III", "Case IV"):
             app.example_case.set(case_name)
             app.load_example()
+            app.refresh_preview()
+            assert any(kind == "unknown" for _, _, kind in app.embedded_plot.data.edges)
+            app.plot()
             app.solve()
+            assert any(kind == "solved" for _, _, kind in app.embedded_plot.data.edges)
+            assert app.popup_plot.data is app.embedded_plot.data
             assert app.solutions, (mode, case_name)
             assert len(app.calculation_table.get_children()) == 4
             assert len(app.coordinate_table.get_children()) == 5
@@ -1072,10 +1246,27 @@ def gui_smoke_test(root, app):
     with patch.dict(sys.modules, {"matplotlib.figure": None}):
         app.plot()
         root.update()
-        assert app.figure is None
+        assert app.popup_plot.figure is None
+        assert app.popup_plot.canvas.find_withtag("solved")
     app.close_plot()
+    with patch.dict(sys.modules, {"matplotlib.figure": None}):
+        fallback_root = app.tk.Toplevel(root)
+        fallback_app = TraverseApp(fallback_root)
+        fallback_app.load_example()
+        fallback_app.refresh_preview()
+        root.update()
+        assert fallback_app.embedded_plot.figure is None
+        assert fallback_app.embedded_plot.canvas.find_withtag("unknown")
+        fallback_app.solve()
+        root.update()
+        assert fallback_app.embedded_plot.canvas.find_withtag("solved")
+        fallback_app.clear()
+        fallback_app.refresh_preview()
+        assert fallback_app.embedded_plot.data is None
+        fallback_root.destroy()
     print("GUI smoke test passed: four cases, two bearing formats, solution selection, "
-          "Matplotlib and fallback plots, TXT/CSV dialogs, 20 rows, clear, invalid input.")
+          "live previews, embedded/pop-out Matplotlib and fallback plots, "
+          "TXT/CSV dialogs, 20 rows, clear, invalid input.")
 
 
 def main():
