@@ -783,11 +783,12 @@ class TraverseApp:
         actions = ttk.Frame(main)
         actions.pack(fill="x", pady=3)
         ttk.Button(actions, text="Solve Traverse", command=self.solve).pack(side="left")
+        ttk.Label(actions, text="Example case:").pack(side="left", padx=(12, 4))
         self.example_case = ttk.Combobox(actions,
                                          values=("Case I", "Case II", "Case III", "Case IV"),
                                          state="readonly", width=9)
         self.example_case.current(0)
-        self.example_case.pack(side="left", padx=(12, 4))
+        self.example_case.pack(side="left", padx=(0, 4))
         ttk.Button(actions, text="Load Example", command=self.load_example).pack(side="left")
         ttk.Button(actions, text="Clear", command=self.clear).pack(side="left", padx=4)
         self.export_button = ttk.Button(actions, text="Export Results", command=self.export)
