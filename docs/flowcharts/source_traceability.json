@@ -1,0 +1,4101 @@
+{
+  "source": "/workspace/EngineeringCommission/traverse_solver.py",
+  "commit": "0cf64fb29a4615db97badf16442ca089ce13d9aa",
+  "sha256": "e18d3a23955f429268eb674285ee16d754702207062ae6a13b631dfc1c5613dc",
+  "nodes": [
+    {
+      "page": "01",
+      "node": "start",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "Execute traverse_solver.py"
+    },
+    {
+      "page": "01",
+      "node": "imports",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "Import standard-library modules; define classes/functions\ntry: import tkinter as tk; from tkinter import filedialog, messagebox, ttk"
+    },
+    {
+      "page": "01",
+      "node": "tkimport",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "tkinter import succeeds?"
+    },
+    {
+      "page": "01",
+      "node": "tknone",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "except ImportError: tk = None"
+    },
+    {
+      "page": "01",
+      "node": "guard",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "__name__ == \"__main__\"?"
+    },
+    {
+      "page": "01",
+      "node": "imported",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "Module import complete\nmain() is not called"
+    },
+    {
+      "page": "01",
+      "node": "main",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "raise SystemExit(main())\nmain(): test tk is None"
+    },
+    {
+      "page": "01",
+      "node": "tk",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "tk is None?"
+    },
+    {
+      "page": "01",
+      "node": "notk",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "print Tkinter-required message to sys.stderr\nreturn 1 → SystemExit(1)"
+    },
+    {
+      "page": "01",
+      "node": "root",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "root = tk.Tk()"
+    },
+    {
+      "page": "01",
+      "node": "display",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "tk.TclError raised?"
+    },
+    {
+      "page": "01",
+      "node": "nodisplay",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "print desktop-display message to sys.stderr\nreturn 1 → SystemExit(1)"
+    },
+    {
+      "page": "01",
+      "node": "construct",
+      "ref": "TraverseApp.__init__",
+      "lines": [
+        731,
+        833
+      ],
+      "text": "TraverseApp(root)\nInputModel: four DraftSide rows\nself.result = None; self.selected = 0\nscreen_geometry(); InputTable(); PlotView(); refresh()"
+    },
+    {
+      "page": "01",
+      "node": "wait",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "root.mainloop()\nNext callback or mainloop returns?"
+    },
+    {
+      "page": "01",
+      "node": "measure",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "Alternative input/display callbacks (02a–02e):\nInputTable.commit() / scroll()\nTraverseApp.resize() / change_origin()\nchange_unit() / select_solution()\nload_example() / clear() / balance_panes()"
+    },
+    {
+      "page": "01",
+      "node": "solve",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "TraverseApp.solve()\nSee 04a–04b; mathematical details 05–08b"
+    },
+    {
+      "page": "01",
+      "node": "files",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "Alternative file/plot callbacks:\nTraverseApp.input_file() / export()\nTraverseApp.enlarge_plot() / close_plot()\nSee 09a–09b, 10–10b, 11a–11d"
+    },
+    {
+      "page": "01",
+      "node": "end",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "root.mainloop() returns\nreturn 0 → SystemExit(0)"
+    },
+    {
+      "page": "01",
+      "node": "exit1",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "SystemExit(1)"
+    },
+    {
+      "page": "01",
+      "node": "note",
+      "ref": "main",
+      "lines": [
+        979,
+        990
+      ],
+      "text": "Callback return paths rejoin root.mainloop().\nRoot window closure uses Tkinter default behavior; no custom root close handler is defined.\nPlotView initialization catches Exception internally (10). Other unhandled callback exceptions are not converted to success by these diagrams."
+    },
+    {
+      "page": "02a",
+      "node": "commit",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "InputTable.commit(index)\nEntry KeyRelease / FocusOut or checkbox command"
+    },
+    {
+      "page": "02a",
+      "node": "range",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "index >= len(self.model.rows)?"
+    },
+    {
+      "page": "02a",
+      "node": "draft",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "values, _ = self.variables[index]\nrow = DraftSide(values[0].get(), values[2].get(),\n                values[1].get(), values[3].get())"
+    },
+    {
+      "page": "02a",
+      "node": "changed",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "row != self.model.rows[index]?"
+    },
+    {
+      "page": "02a",
+      "node": "commitrow",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "self.model.rows[index] = row\nself.set_states(index)"
+    },
+    {
+      "page": "02a",
+      "node": "refresh",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.on_change(data_changed=True)\nTraverseApp.refresh clears stale results; page 02c"
+    },
+    {
+      "page": "02a",
+      "node": "commitret",
+      "ref": "InputTable.commit",
+      "lines": [
+        692,
+        700
+      ],
+      "text": "return\nCallback ends; root.mainloop resumes"
+    },
+    {
+      "page": "02a",
+      "node": "scroll",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "InputTable.scroll(event)\nMouseWheel / Button-4 / Button-5 callback"
+    },
+    {
+      "page": "02a",
+      "node": "pointer",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "x, y = event root position − canvas root position"
+    },
+    {
+      "page": "02a",
+      "node": "inside",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "Pointer within self.canvas width and height?"
+    },
+    {
+      "page": "02a",
+      "node": "steps",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "steps = −1 for Button-4; otherwise 1"
+    },
+    {
+      "page": "02a",
+      "node": "delta",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "getattr(event, 'delta', 0)?"
+    },
+    {
+      "page": "02a",
+      "node": "wheel",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "steps = -max(1, abs(event.delta) // 120) if event.delta > 0\nelse max(1, abs(event.delta) // 120)"
+    },
+    {
+      "page": "02a",
+      "node": "scrollunits",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "self.canvas.yview_scroll(steps, 'units')"
+    },
+    {
+      "page": "02a",
+      "node": "break",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "return 'break'\nStop further handling of this event"
+    },
+    {
+      "page": "02a",
+      "node": "scrollret",
+      "ref": "InputTable.scroll",
+      "lines": [
+        702,
+        710
+      ],
+      "text": "Implicit return None\nOutside input canvas: do not scroll it"
+    },
+    {
+      "page": "02b",
+      "node": "resize",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "TraverseApp.resize(*_)\nSpinbox, Return, FocusOut, or solve() entry"
+    },
+    {
+      "page": "02b",
+      "node": "integer",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "re.fullmatch(r'[0-9]+', self.count.get())?"
+    },
+    {
+      "page": "02b",
+      "node": "badformat",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "raise TraverseError\nEnter an integer side count from 3 to 20."
+    },
+    {
+      "page": "02b",
+      "node": "different",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "count = int(self.count.get())\ncount != len(self.model.rows)?"
+    },
+    {
+      "page": "02b",
+      "node": "modelresize",
+      "ref": "InputModel.resize",
+      "lines": [
+        457,
+        460
+      ],
+      "text": "self.model.resize(count)\nReject type(count) is not int or count outside 3…20;\notherwise extend/truncate DraftSide rows"
+    },
+    {
+      "page": "02b",
+      "node": "rebuilt",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.table.rebuild()\nself.refresh(data_changed=True) — page 02c"
+    },
+    {
+      "page": "02b",
+      "node": "good",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "return True\nCaller continues; event callback resumes root.mainloop"
+    },
+    {
+      "page": "02b",
+      "node": "resizeerror",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "except TraverseError as error\nReset self.count to actual row count;\nmessagebox.showerror('Invalid Side Count', str(error))"
+    },
+    {
+      "page": "02b",
+      "node": "bad",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "return False\nsolve() stops on this result"
+    },
+    {
+      "page": "02c",
+      "node": "start",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "TraverseApp.refresh(data_changed=False)"
+    },
+    {
+      "page": "02c",
+      "node": "changed",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "data_changed?"
+    },
+    {
+      "page": "02c",
+      "node": "invalidate",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.result = None\nself.status.set('Inputs changed · Solve to update results.')"
+    },
+    {
+      "page": "02c",
+      "node": "case",
+      "ref": "InputModel.case",
+      "lines": [
+        452,
+        455
+      ],
+      "text": "self.model.case()\ncase_from_unknowns(length IDs, bearing IDs)"
+    },
+    {
+      "page": "02c",
+      "node": "detected",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.case_label.configure(text=\"Detected: \" + CASES[self.model.case()])"
+    },
+    {
+      "page": "02c",
+      "node": "unknowns",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "except TraverseError\nDisplay instruction to mark two unknown quantities"
+    },
+    {
+      "page": "02c",
+      "node": "clearrows",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.calculations.delete(*self.calculations.get_children())\nEnable export iff self.result;\nenable plot iff result exists and self.plot.figure exists"
+    },
+    {
+      "page": "02c",
+      "node": "result",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.result?"
+    },
+    {
+      "page": "02c",
+      "node": "labels",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "Build Solution 1…n — geometry_label choices;\nself.choice.configure(state='readonly', values=labels)\nClamp self.selected and select it"
+    },
+    {
+      "page": "02c",
+      "node": "texts",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "set_text(self.summary, solution_summary(...))\nset_text(self.details, self.result.details)"
+    },
+    {
+      "page": "02c",
+      "node": "rows",
+      "ref": "calculation_rows",
+      "lines": [
+        496,
+        502
+      ],
+      "text": "Next row from calculation_rows(\nself.result.solutions[self.selected])?"
+    },
+    {
+      "page": "02c",
+      "node": "row",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "Format float values to 4 decimals;\nvalues[3] = display_azimuth(row[3])\nself.calculations.insert('', 'end', values=values)"
+    },
+    {
+      "page": "02c",
+      "node": "empty",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "Disable and empty self.choice;\nset_text summary to input instructions;\nset_text(self.details, '')"
+    },
+    {
+      "page": "02c",
+      "node": "plot",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "self.plot.render(self.model, self.result, self.selected)\nPlotView.render — page 10a"
+    },
+    {
+      "page": "02c",
+      "node": "popup",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "self.popup?"
+    },
+    {
+      "page": "02c",
+      "node": "popupplot",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "self.popup.render(self.model, self.result, self.selected)\nPlotView.render — page 10a"
+    },
+    {
+      "page": "02c",
+      "node": "end",
+      "ref": "TraverseApp.refresh",
+      "lines": [
+        839,
+        871
+      ],
+      "text": "Implicit return None\nCaller resumes; callback returns to root.mainloop"
+    },
+    {
+      "page": "02d",
+      "node": "origin",
+      "ref": "TraverseApp.change_origin",
+      "lines": [
+        888,
+        891
+      ],
+      "text": "TraverseApp.change_origin(name, value)"
+    },
+    {
+      "page": "02d",
+      "node": "origindiff",
+      "ref": "TraverseApp.change_origin",
+      "lines": [
+        888,
+        891
+      ],
+      "text": "value != getattr(self.model, name)?"
+    },
+    {
+      "page": "02d",
+      "node": "setorigin",
+      "ref": "TraverseApp.change_origin",
+      "lines": [
+        888,
+        891
+      ],
+      "text": "setattr(self.model, name, value)\nself.refresh(data_changed=True) — page 02c"
+    },
+    {
+      "page": "02d",
+      "node": "unit",
+      "ref": "TraverseApp.change_unit",
+      "lines": [
+        893,
+        895
+      ],
+      "text": "TraverseApp.change_unit(*_)"
+    },
+    {
+      "page": "02d",
+      "node": "setunit",
+      "ref": "TraverseApp.change_unit",
+      "lines": [
+        893,
+        895
+      ],
+      "text": "self.model.unit = self.unit.get()\nself.refresh() — page 02c\nExisting result is retained; no numeric conversion"
+    },
+    {
+      "page": "02d",
+      "node": "select",
+      "ref": "TraverseApp.select_solution",
+      "lines": [
+        897,
+        899
+      ],
+      "text": "TraverseApp.select_solution(*_)"
+    },
+    {
+      "page": "02d",
+      "node": "setselect",
+      "ref": "TraverseApp.select_solution",
+      "lines": [
+        897,
+        899
+      ],
+      "text": "self.selected = self.choice.current()\nself.refresh() — page 02c"
+    },
+    {
+      "page": "02d",
+      "node": "callbackret",
+      "ref": "TraverseApp.replace_model",
+      "lines": [
+        901,
+        909
+      ],
+      "text": "Implicit return None\nReturn to caller; callback resumes root.mainloop"
+    },
+    {
+      "page": "02e",
+      "node": "example",
+      "ref": "TraverseApp.load_example",
+      "lines": [
+        911,
+        912
+      ],
+      "text": "TraverseApp.load_example()"
+    },
+    {
+      "page": "02e",
+      "node": "examplemodel",
+      "ref": "InputModel.from_example",
+      "lines": [
+        463,
+        466
+      ],
+      "text": "InputModel.from_example(self.example_case.current())\nBuild DraftSide rows from example(case)"
+    },
+    {
+      "page": "02e",
+      "node": "clear",
+      "ref": "TraverseApp.clear",
+      "lines": [
+        914,
+        915
+      ],
+      "text": "TraverseApp.clear()"
+    },
+    {
+      "page": "02e",
+      "node": "clearmodel",
+      "ref": "TraverseApp.clear",
+      "lines": [
+        914,
+        915
+      ],
+      "text": "InputModel([DraftSide() for _ in self.model.rows],\nunit=self.model.unit)\nPreserve side count and unit; reset origin defaults"
+    },
+    {
+      "page": "02e",
+      "node": "replace",
+      "ref": "TraverseApp.replace_model",
+      "lines": [
+        901,
+        909
+      ],
+      "text": "TraverseApp.replace_model(model)\nAlso callable from loaded JSON — page 09a"
+    },
+    {
+      "page": "02e",
+      "node": "replacevars",
+      "ref": "TraverseApp.replace_model",
+      "lines": [
+        901,
+        909
+      ],
+      "text": "self.model = self.table.model = model\nSet count, initial_n, initial_e, and unit widget variables"
+    },
+    {
+      "page": "02e",
+      "node": "replacerefresh",
+      "ref": "TraverseApp.replace_model",
+      "lines": [
+        901,
+        909
+      ],
+      "text": "self.table.rebuild(); self.selected = 0\nself.refresh(data_changed=True) — page 02c"
+    },
+    {
+      "page": "02e",
+      "node": "callbackret",
+      "ref": "TraverseApp.replace_model",
+      "lines": [
+        901,
+        909
+      ],
+      "text": "Implicit return None\nReturn to caller; callback resumes root.mainloop"
+    },
+    {
+      "page": "03a",
+      "node": "s",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "InputModel.sides()"
+    },
+    {
+      "page": "03a",
+      "node": "init",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "sides = []"
+    },
+    {
+      "page": "03a",
+      "node": "rows",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "Next i, row in enumerate(self.rows, 1)?"
+    },
+    {
+      "page": "03a",
+      "node": "lu",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "row.length_unknown?"
+    },
+    {
+      "page": "03a",
+      "node": "ln",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "length = None"
+    },
+    {
+      "page": "03a",
+      "node": "lp",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "length = number(row.length, \"Length\")"
+    },
+    {
+      "page": "03a",
+      "node": "bu",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "row.bearing_unknown?"
+    },
+    {
+      "page": "03a",
+      "node": "bn",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "bearing = None"
+    },
+    {
+      "page": "03a",
+      "node": "bp",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "bearing = parse_bearing(row.bearing)\nSee page 03c."
+    },
+    {
+      "page": "03a",
+      "node": "append",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "sides.append(TraverseSide(length, bearing))"
+    },
+    {
+      "page": "03a",
+      "node": "return",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "Return sides"
+    },
+    {
+      "page": "03a",
+      "node": "raise",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "Raise TraverseError(f\"Side {i}: {error}\")\nfrom None; handled inner TraverseError."
+    },
+    {
+      "page": "03a",
+      "node": "ns",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "number(text, label=\"Value\")"
+    },
+    {
+      "page": "03a",
+      "node": "token",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "token = str(text).strip()"
+    },
+    {
+      "page": "03a",
+      "node": "decimal",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "re.fullmatch(_DECIMAL, token)?"
+    },
+    {
+      "page": "03a",
+      "node": "syntax",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "Raise TraverseError:\n{label} must be an ASCII decimal number\n(no underscores)."
+    },
+    {
+      "page": "03a",
+      "node": "float",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "value = float(token)"
+    },
+    {
+      "page": "03a",
+      "node": "finite",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "math.isfinite(value)?"
+    },
+    {
+      "page": "03a",
+      "node": "nonfinite",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "Raise TraverseError:\n{label} must be finite."
+    },
+    {
+      "page": "03a",
+      "node": "nr",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "Return value"
+    },
+    {
+      "page": "03b",
+      "node": "as",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "parse_angle(text)"
+    },
+    {
+      "page": "03b",
+      "node": "normalize",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Strip str(text); normalize º / ′ / ″ /\ndoubled apostrophes / curly apostrophes."
+    },
+    {
+      "page": "03b",
+      "node": "decimal",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "re.fullmatch(_DECIMAL + r\"\\s*°?\", text)?"
+    },
+    {
+      "page": "03b",
+      "node": "num",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "number(text.rstrip(\"°\").strip(), \"Angle\")\nSee page 03a."
+    },
+    {
+      "page": "03b",
+      "node": "retdecimal",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Return number() result"
+    },
+    {
+      "page": "03b",
+      "node": "patterns",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "patterns = (symbol DMS, colon/space DMS)\nUse the two exact regexes in parse_angle()."
+    },
+    {
+      "page": "03b",
+      "node": "next",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Next pattern in patterns?"
+    },
+    {
+      "page": "03b",
+      "node": "match",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "match = re.fullmatch(pattern, text)\nmatch?"
+    },
+    {
+      "page": "03b",
+      "node": "parts",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "degrees, minutes, seconds =\n(float(part or 0) for part in match.groups())"
+    },
+    {
+      "page": "03b",
+      "node": "valid",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "minutes < 60 and seconds < 60?"
+    },
+    {
+      "page": "03b",
+      "node": "retdms",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Return degrees + minutes / 60 + seconds / 3600"
+    },
+    {
+      "page": "03b",
+      "node": "dms",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Raise TraverseError:\nDMS minutes and seconds must be in [0, 60)."
+    },
+    {
+      "page": "03b",
+      "node": "format",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Raise TraverseError:\nUse decimal degrees or DMS."
+    },
+    {
+      "page": "03b",
+      "node": "propagate",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "Propagate TraverseError to caller\n(no local handler)."
+    },
+    {
+      "page": "03c",
+      "node": "bs",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "parse_bearing(text)"
+    },
+    {
+      "page": "03c",
+      "node": "bmatch",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "text = str(text).strip().upper()\nmatch = re.fullmatch(r\"([NS])\\s*(.*?)\\s*([EW])\", text)"
+    },
+    {
+      "page": "03c",
+      "node": "quadrant",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "match?"
+    },
+    {
+      "page": "03c",
+      "node": "qa",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "ns, angle_text, ew = match.groups()\nangle = parse_angle(angle_text)"
+    },
+    {
+      "page": "03c",
+      "node": "qrange",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "0 <= angle <= 90?"
+    },
+    {
+      "page": "03c",
+      "node": "qret",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "return {(\"N\", \"E\"): angle, (\"S\", \"E\"): 180 - angle,\n        (\"S\", \"W\"): 180 + angle, (\"N\", \"W\"): 360 - angle}[ns, ew] % 360"
+    },
+    {
+      "page": "03c",
+      "node": "qerror",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "Raise TraverseError:\nQuadrantal angles must be between 0° and 90°."
+    },
+    {
+      "page": "03c",
+      "node": "aa",
+      "ref": "parse_angle",
+      "lines": [
+        45,
+        63
+      ],
+      "text": "angle = parse_angle(text)"
+    },
+    {
+      "page": "03c",
+      "node": "arange",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "0 <= angle <= 360?"
+    },
+    {
+      "page": "03c",
+      "node": "aret",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "Return angle % 360"
+    },
+    {
+      "page": "03c",
+      "node": "aerror",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "Raise TraverseError:\nAzimuth must be between 0° and 360°."
+    },
+    {
+      "page": "03c",
+      "node": "propagate",
+      "ref": "parse_bearing",
+      "lines": [
+        66,
+        79
+      ],
+      "text": "Propagate TraverseError to caller\n(no local handler)."
+    },
+    {
+      "page": "03d",
+      "node": "s",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "case_from_unknowns(length_ids, bearing_ids)"
+    },
+    {
+      "page": "03d",
+      "node": "sets",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "lengths, bearings = set(length_ids), set(bearing_ids)"
+    },
+    {
+      "page": "03d",
+      "node": "one",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "len(lengths) == len(bearings) == 1?"
+    },
+    {
+      "page": "03d",
+      "node": "same",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "lengths == bearings?"
+    },
+    {
+      "page": "03d",
+      "node": "zero",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return 0"
+    },
+    {
+      "page": "03d",
+      "node": "first",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return 1"
+    },
+    {
+      "page": "03d",
+      "node": "twol",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "len(lengths) == 2 and not bearings?"
+    },
+    {
+      "page": "03d",
+      "node": "second",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return 2"
+    },
+    {
+      "page": "03d",
+      "node": "twob",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "len(bearings) == 2 and not lengths?"
+    },
+    {
+      "page": "03d",
+      "node": "third",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return 3"
+    },
+    {
+      "page": "03d",
+      "node": "invalid",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Raise TraverseError:\nMark exactly two unknowns: one length and one bearing,\ntwo lengths, or two bearings."
+    },
+    {
+      "page": "03d",
+      "node": "ds",
+      "ref": "detect_case",
+      "lines": [
+        169,
+        171
+      ],
+      "text": "detect_case(sides)"
+    },
+    {
+      "page": "03d",
+      "node": "dc",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return case_from_unknowns(\nindices where s.length is None,\nindices where s.azimuth is None)"
+    },
+    {
+      "page": "03d",
+      "node": "ms",
+      "ref": "InputModel.case",
+      "lines": [
+        452,
+        455
+      ],
+      "text": "InputModel.case()"
+    },
+    {
+      "page": "03d",
+      "node": "mc",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return case_from_unknowns(\nindices where row.length_unknown,\nindices where row.bearing_unknown)"
+    },
+    {
+      "page": "03d",
+      "node": "callreturn",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Return case index to caller"
+    },
+    {
+      "page": "03d",
+      "node": "callraise",
+      "ref": "case_from_unknowns",
+      "lines": [
+        157,
+        166
+      ],
+      "text": "Propagate TraverseError to caller\n(no local handler)."
+    },
+    {
+      "page": "03e",
+      "node": "s",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "quadrantal(angle)"
+    },
+    {
+      "page": "03e",
+      "node": "ticks",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ticks = round((angle % 360) * 360000) % 129600000"
+    },
+    {
+      "page": "03e",
+      "node": "first",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ticks <= 32400000?"
+    },
+    {
+      "page": "03e",
+      "node": "ne",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ns, ticks, ew = \"N\", ticks, \"E\""
+    },
+    {
+      "page": "03e",
+      "node": "second",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ticks <= 64800000?"
+    },
+    {
+      "page": "03e",
+      "node": "se",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ns, ticks, ew = \"S\", 64800000 - ticks, \"E\""
+    },
+    {
+      "page": "03e",
+      "node": "third",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ticks < 97200000?"
+    },
+    {
+      "page": "03e",
+      "node": "sw",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ns, ticks, ew = \"S\", ticks - 64800000, \"W\""
+    },
+    {
+      "page": "03e",
+      "node": "nw",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "ns, ticks, ew = \"N\", 129600000 - ticks, \"W\""
+    },
+    {
+      "page": "03e",
+      "node": "parts",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "degrees, rest = divmod(ticks, 360000)\nminutes, seconds = divmod(rest, 6000)"
+    },
+    {
+      "page": "03e",
+      "node": "return",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "return f\"{ns} {degrees}°{minutes:02d}'{seconds / 100:05.2f}\\\" {ew}\""
+    },
+    {
+      "page": "03e",
+      "node": "ds",
+      "ref": "display_azimuth",
+      "lines": [
+        98,
+        99
+      ],
+      "text": "display_azimuth(angle)"
+    },
+    {
+      "page": "03e",
+      "node": "dr",
+      "ref": "display_azimuth",
+      "lines": [
+        98,
+        99
+      ],
+      "text": "return f\"{round(angle % 360, 4) % 360:.4f}\""
+    },
+    {
+      "page": "04a",
+      "node": "start",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "TraverseApp.solve()"
+    },
+    {
+      "page": "04a",
+      "node": "resize",
+      "ref": "TraverseApp.resize",
+      "lines": [
+        873,
+        886
+      ],
+      "text": "self.resize()\nSee 02b"
+    },
+    {
+      "page": "04a",
+      "node": "validcount",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "self.resize() returned True?"
+    },
+    {
+      "page": "04a",
+      "node": "return",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "return to root.mainloop()"
+    },
+    {
+      "page": "04a",
+      "node": "collect",
+      "ref": "InputModel.sides",
+      "lines": [
+        441,
+        450
+      ],
+      "text": "self.model.sides()\nSee 03a–03c"
+    },
+    {
+      "page": "04a",
+      "node": "core",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solve_traverse(sides, initial_e, initial_n)"
+    },
+    {
+      "page": "04a",
+      "node": "count",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "3 <= len(sides) <= 20?"
+    },
+    {
+      "page": "04a",
+      "node": "coords",
+      "ref": "number",
+      "lines": [
+        35,
+        42
+      ],
+      "text": "initial_e = number(initial_e, \"Initial Easting\")\ninitial_n = number(initial_n, \"Initial Northing\")"
+    },
+    {
+      "page": "04a",
+      "node": "loop",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "More (index, side) in enumerate(sides, 1)?"
+    },
+    {
+      "page": "04a",
+      "node": "length",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "side.length is not None and\n(not math.isfinite(side.length) or side.length <= 0)?"
+    },
+    {
+      "page": "04a",
+      "node": "bearing",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "side.azimuth is not None and\n(not math.isfinite(side.azimuth) or\nnot 0 <= side.azimuth < 360)?"
+    },
+    {
+      "page": "04a",
+      "node": "error",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "raise TraverseError\nSide count / positive finite length / normalized azimuth error"
+    },
+    {
+      "page": "04a",
+      "node": "detect",
+      "ref": "detect_case",
+      "lines": [
+        169,
+        171
+      ],
+      "text": "case = detect_case(sides)\nSee 03d"
+    },
+    {
+      "page": "04a",
+      "node": "target",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "known = [vector(s) for s in sides\n    if s.length is not None and s.azimuth is not None]\ntarget = (-math.fsum(e for e, _ in known),\n          -math.fsum(n for _, n in known))\npolicy = NumericalPolicy(math.fsum(s.length or 0 for s in sides))"
+    },
+    {
+      "page": "04a",
+      "node": "dispatch",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "case returned by detect_case(sides)?"
+    },
+    {
+      "page": "04a",
+      "node": "i",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "solve_case_i(sides, target, policy)\nSee 05"
+    },
+    {
+      "page": "04a",
+      "node": "ii",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "solve_case_ii(sides, target, policy)\nSee 06"
+    },
+    {
+      "page": "04a",
+      "node": "iii",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "solve_case_iii(sides, target, policy)\nSee 05"
+    },
+    {
+      "page": "04a",
+      "node": "iv",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "solve_case_iv(sides, target, policy)\nSee 07"
+    },
+    {
+      "page": "04a",
+      "node": "filter",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "candidates → solution filtering\nContinue at 04b"
+    },
+    {
+      "page": "04a",
+      "node": "caught",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "TraverseApp.solve() try block outcome?"
+    },
+    {
+      "page": "04a",
+      "node": "message",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "message = str(error) for TraverseError; otherwise numeric-range guidance\nmessagebox.showerror(\"Cannot Solve\", message)\nreturn"
+    },
+    {
+      "page": "04a",
+      "node": "result",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "self.result, self.selected = result, 0\nself.refresh()\nself.status.set(...)\nreturn"
+    },
+    {
+      "page": "04a",
+      "node": "unhandled",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "Other exception propagates\nNo matching except in TraverseApp.solve()"
+    },
+    {
+      "page": "04a",
+      "node": "errors_note",
+      "ref": "TraverseApp.solve",
+      "lines": [
+        917,
+        931
+      ],
+      "text": "Exceptions from InputModel.sides(), number(), detect_case(), case solvers, or candidate evaluation all propagate to the same TraverseApp.solve() catch. Unmatched exceptions are not caught there.\nCASES exact descriptions are listed on 03d. The tuple dispatch uses indices 0, 1, 2, 3."
+    },
+    {
+      "page": "04b",
+      "node": "start",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "candidates returned from selected solver (04a)"
+    },
+    {
+      "page": "04b",
+      "node": "init",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solutions, condition_number = [], None"
+    },
+    {
+      "page": "04b",
+      "node": "case",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "case == 2?"
+    },
+    {
+      "page": "04b",
+      "node": "cond",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "_, _, ae, an, be, bn, determinant = _length_system(sides)\ncondition_number = (1 + abs(ae * be + an * bn)) / abs(determinant)"
+    },
+    {
+      "page": "04b",
+      "node": "loop",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "More candidate in candidates?"
+    },
+    {
+      "page": "04b",
+      "node": "positive",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "any(s.length <= policy.length for s in candidate)?"
+    },
+    {
+      "page": "04b",
+      "node": "eval",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "solution = evaluate_solution(candidate, initial_e, initial_n)\nSee 08a–08b"
+    },
+    {
+      "page": "04b",
+      "node": "duplicate",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "duplicate = any(all(math.hypot(a[0] - b[0], a[1] - b[1])\n    <= solution.tolerance\n    for a, b in zip(solution.components, old.components))\n    for old in solutions)"
+    },
+    {
+      "page": "04b",
+      "node": "accept",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solution.closure <= solution.tolerance\nand not duplicate?"
+    },
+    {
+      "page": "04b",
+      "node": "warn",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "case == 2 and abs(determinant) < policy.conditioning_warning?"
+    },
+    {
+      "page": "04b",
+      "node": "warning",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solution.warnings.append(\"Ill-conditioned bearings: ...\"\n    + condition_number text)"
+    },
+    {
+      "page": "04b",
+      "node": "append",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solutions.append(solution)"
+    },
+    {
+      "page": "04b",
+      "node": "empty",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "not solutions?"
+    },
+    {
+      "page": "04b",
+      "node": "error",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "raise TraverseError\nCheck reversed bearing (180°), quadrant, side order, entered lengths"
+    },
+    {
+      "page": "04b",
+      "node": "sort",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "solutions.sort(key=lambda solution: solution.area is None)"
+    },
+    {
+      "page": "04b",
+      "node": "explain",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "explain_result(sides, case, target, solutions, condition_number)\nSee 11d"
+    },
+    {
+      "page": "04b",
+      "node": "return",
+      "ref": "solve_traverse",
+      "lines": [
+        372,
+        412
+      ],
+      "text": "return SolveResult(case, solutions,\n    explain_result(sides, case, target, solutions, condition_number),\n    condition_number)\nReturn to TraverseApp.solve() on 04a"
+    },
+    {
+      "page": "04b",
+      "node": "policy",
+      "ref": "NumericalPolicy",
+      "lines": [
+        109,
+        127
+      ],
+      "text": "NumericalPolicy.conditioning_warning = 0.01\nNumericalPolicy.singular = 64 * sys.float_info.epsilon\nDuplicate comparisons use solution.components, not rounded bearings.\nA crossed/degenerate boundary is retained if the equations close, sorted after simple polygons."
+    },
+    {
+      "page": "05",
+      "node": "i_start",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "solve_case_i(sides, target, policy)"
+    },
+    {
+      "page": "05",
+      "node": "i_values",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "i = next(i for i, s in enumerate(sides)\n         if s.length is None)\nlength = math.hypot(*target)"
+    },
+    {
+      "page": "05",
+      "node": "i_zero",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "length <= policy.length?"
+    },
+    {
+      "page": "05",
+      "node": "i_error",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "raise TraverseError(\"The omitted side has zero length; its bearing is indeterminate.\")"
+    },
+    {
+      "page": "05",
+      "node": "i_candidate",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "result = list(sides)\nresult[i] = TraverseSide(length, vector_azimuth(*target))"
+    },
+    {
+      "page": "05",
+      "node": "i_return",
+      "ref": "solve_case_i",
+      "lines": [
+        224,
+        231
+      ],
+      "text": "return [result]"
+    },
+    {
+      "page": "05",
+      "node": "iii_start",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "solve_case_iii(sides, target, policy)"
+    },
+    {
+      "page": "05",
+      "node": "iii_system",
+      "ref": "_length_system",
+      "lines": [
+        258,
+        262
+      ],
+      "text": "i, j, ae, an, be, bn, determinant = _length_system(sides)"
+    },
+    {
+      "page": "05",
+      "node": "iii_singular",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "abs(determinant) <= policy.singular?"
+    },
+    {
+      "page": "05",
+      "node": "iii_error",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "raise TraverseError(\"Singular system: the two bearings are parallel or opposite; the missing lengths cannot be uniquely determined.\")"
+    },
+    {
+      "page": "05",
+      "node": "iii_lengths",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "east, north = target\nfirst = (east * bn - be * north) / determinant\nsecond = (ae * north - east * an) / determinant"
+    },
+    {
+      "page": "05",
+      "node": "iii_candidate",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "candidate = list(sides)\ncandidate[i] = replace(sides[i], length=first)\ncandidate[j] = replace(sides[j], length=second)"
+    },
+    {
+      "page": "05",
+      "node": "iii_return",
+      "ref": "solve_case_iii",
+      "lines": [
+        265,
+        275
+      ],
+      "text": "return [candidate]"
+    },
+    {
+      "page": "05",
+      "node": "system_note",
+      "ref": "_length_system",
+      "lines": [
+        258,
+        262
+      ],
+      "text": "_length_system(sides):\ni, j = [i for i, s in enumerate(sides) if s.length is None]\nae, an = unit_vector(sides[i].azimuth)\nbe, bn = unit_vector(sides[j].azimuth)\nreturn i, j, ae, an, be, bn, ae * bn - be * an"
+    },
+    {
+      "page": "05",
+      "node": "policy_note",
+      "ref": "NumericalPolicy",
+      "lines": [
+        109,
+        127
+      ],
+      "text": "NumericalPolicy.length: return self.scale * self.relative\nrelative: float = 1e-10\nsingular = 64 * sys.float_info.epsilon\nPositive candidate lengths and closure are checked later in solve_traverse()."
+    },
+    {
+      "page": "05",
+      "node": "vector_note",
+      "ref": "vector_azimuth",
+      "lines": [
+        183,
+        185
+      ],
+      "text": "unit_vector(angle):\nreturn math.sin(math.radians(angle)), math.cos(math.radians(angle))\nvector_azimuth(east, north):\nangle = math.degrees(math.atan2(east, north)) % 360\nreturn 0.0 if angle == 360 else angle"
+    },
+    {
+      "page": "06",
+      "node": "start",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "solve_case_ii(sides, target, policy)"
+    },
+    {
+      "page": "06",
+      "node": "indices",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "i = next(i for i, s in enumerate(sides) if s.length is None)\nj = next(i for i, s in enumerate(sides) if s.azimuth is None)\neast, north = target"
+    },
+    {
+      "page": "06",
+      "node": "unit",
+      "ref": "unit_vector",
+      "lines": [
+        174,
+        175
+      ],
+      "text": "ue, un = unit_vector(sides[i].azimuth)"
+    },
+    {
+      "page": "06",
+      "node": "project",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "projection = east * ue + north * un\nperpendicular = east * un - north * ue\ndiscriminant = sides[j].length**2 - perpendicular**2"
+    },
+    {
+      "page": "06",
+      "node": "no_intersection",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "discriminant < -policy.squared_length?"
+    },
+    {
+      "page": "06",
+      "node": "error",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "raise TraverseError(\"No solution: the known length cannot reach the known-bearing ray.\")"
+    },
+    {
+      "page": "06",
+      "node": "near_zero",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "abs(discriminant) <= policy.roundoff_squared?"
+    },
+    {
+      "page": "06",
+      "node": "clamp",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "discriminant = 0.0"
+    },
+    {
+      "page": "06",
+      "node": "root",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "root = math.sqrt(max(0, discriminant))\ncandidates = []"
+    },
+    {
+      "page": "06",
+      "node": "loop",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "More length values in\n(projection + root, projection - root)?"
+    },
+    {
+      "page": "06",
+      "node": "positive",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "length <= policy.length?"
+    },
+    {
+      "page": "06",
+      "node": "candidate",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "candidate = list(sides)\ncandidate[i] = replace(sides[i], length=length)"
+    },
+    {
+      "page": "06",
+      "node": "bearing",
+      "ref": "vector_azimuth",
+      "lines": [
+        183,
+        185
+      ],
+      "text": "candidate[j] = replace(sides[j],\n    azimuth=vector_azimuth(east - length * ue,\n                           north - length * un))"
+    },
+    {
+      "page": "06",
+      "node": "append",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "candidates.append(candidate)"
+    },
+    {
+      "page": "06",
+      "node": "return",
+      "ref": "solve_case_ii",
+      "lines": [
+        234,
+        255
+      ],
+      "text": "return candidates"
+    },
+    {
+      "page": "06",
+      "node": "policy",
+      "ref": "NumericalPolicy",
+      "lines": [
+        109,
+        127
+      ],
+      "text": "NumericalPolicy.squared_length: return self.scale * self.length\nNumericalPolicy.roundoff_squared:\nreturn 64 * sys.float_info.epsilon * self.scale**2\nAn empty candidates list is returned if neither length is positive."
+    },
+    {
+      "page": "07",
+      "node": "start",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "solve_case_iv(sides, target, policy)"
+    },
+    {
+      "page": "07",
+      "node": "values",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "i, j = [i for i, s in enumerate(sides) if s.azimuth is None]\na, b, distance = sides[i].length, sides[j].length, math.hypot(*target)"
+    },
+    {
+      "page": "07",
+      "node": "zero",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "distance <= policy.length?"
+    },
+    {
+      "page": "07",
+      "node": "equal",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "abs(a - b) <= policy.length?"
+    },
+    {
+      "page": "07",
+      "node": "infinite",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "raise TraverseError(\"Infinitely many solutions: equal opposite sides can rotate freely; supply another bearing or engineering constraint.\")"
+    },
+    {
+      "page": "07",
+      "node": "unequal",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "raise TraverseError(\"No solution: unequal lengths cannot sum to a zero vector.\")"
+    },
+    {
+      "page": "07",
+      "node": "triangle",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "distance > a + b + policy.length\nor distance < abs(a - b) - policy.length?"
+    },
+    {
+      "page": "07",
+      "node": "triangle_error",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "raise TraverseError(\"No solution: known lengths violate the triangle inequality.\")"
+    },
+    {
+      "page": "07",
+      "node": "along",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "along = (distance**2 + a**2 - b**2) / (2 * distance)\nheight_sq = a**2 - along**2"
+    },
+    {
+      "page": "07",
+      "node": "negative",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "height_sq < -policy.squared_length?"
+    },
+    {
+      "page": "07",
+      "node": "intersection_error",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "raise TraverseError(\"No stable circle intersection exists for these inputs.\")"
+    },
+    {
+      "page": "07",
+      "node": "roundoff",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "abs(height_sq) <= policy.roundoff_squared?"
+    },
+    {
+      "page": "07",
+      "node": "clamp",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "height_sq = 0.0"
+    },
+    {
+      "page": "07",
+      "node": "basis",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "height = math.sqrt(max(0, height_sq))\nue, un = target[0] / distance, target[1] / distance\ncandidates = []"
+    },
+    {
+      "page": "07",
+      "node": "loop",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "More sign values in (1, -1)?"
+    },
+    {
+      "page": "07",
+      "node": "first_vector",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "east = along * ue - sign * height * un\nnorth = along * un + sign * height * ue\ncandidate = list(sides)"
+    },
+    {
+      "page": "07",
+      "node": "bearings",
+      "ref": "vector_azimuth",
+      "lines": [
+        183,
+        185
+      ],
+      "text": "candidate[i] = replace(sides[i],\n    azimuth=vector_azimuth(east, north))\ncandidate[j] = replace(sides[j],\n    azimuth=vector_azimuth(target[0] - east, target[1] - north))"
+    },
+    {
+      "page": "07",
+      "node": "append",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "candidates.append(candidate)"
+    },
+    {
+      "page": "07",
+      "node": "return",
+      "ref": "solve_case_iv",
+      "lines": [
+        278,
+        303
+      ],
+      "text": "return candidates"
+    },
+    {
+      "page": "08a",
+      "node": "start",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "evaluate_solution(sides, initial_e, initial_n)"
+    },
+    {
+      "page": "08a",
+      "node": "components",
+      "ref": "vector",
+      "lines": [
+        178,
+        180
+      ],
+      "text": "components = [vector(side) for side in sides]\nvector(side): east, north = unit_vector(side.azimuth)\nreturn side.length * east, side.length * north"
+    },
+    {
+      "page": "08a",
+      "node": "policy",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "perimeter = math.fsum(side.length for side in sides)\npolicy = NumericalPolicy(perimeter)"
+    },
+    {
+      "page": "08a",
+      "node": "local",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "local = [(0.0, 0.0)] + [\n    (math.fsum(e for e, _ in components[:i]),\n     math.fsum(n for _, n in components[:i]))\n    for i in range(1, len(sides) + 1)]"
+    },
+    {
+      "page": "08a",
+      "node": "coordinates",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "coordinates = [(initial_e + e, initial_n + n) for e, n in local]"
+    },
+    {
+      "page": "08a",
+      "node": "finite",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "any(not math.isfinite(value)\n    for point in coordinates for value in point)?"
+    },
+    {
+      "page": "08a",
+      "node": "error",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "raise TraverseError(\"Coordinates exceed the supported floating-point range.\")"
+    },
+    {
+      "page": "08a",
+      "node": "area",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "area = polygon_area(local, policy)\nSee page 08b."
+    },
+    {
+      "page": "08a",
+      "node": "valid_area",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "area is not None?"
+    },
+    {
+      "page": "08a",
+      "node": "no_warning",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "warnings = []"
+    },
+    {
+      "page": "08a",
+      "node": "warning",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "warnings = [\"Crossed or degenerate boundary: sides intersect, touch, or retrace; area unavailable.\"]"
+    },
+    {
+      "page": "08a",
+      "node": "sum",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "sum_e, sum_n = local[-1]"
+    },
+    {
+      "page": "08a",
+      "node": "return",
+      "ref": "evaluate_solution",
+      "lines": [
+        306,
+        321
+      ],
+      "text": "return Solution(sides, components, local, coordinates,\n    perimeter, sum_e, sum_n, math.hypot(sum_e, sum_n),\n    area, warnings, policy.length)"
+    },
+    {
+      "page": "08b",
+      "node": "start",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "polygon_area(points, policy)"
+    },
+    {
+      "page": "08b",
+      "node": "setup",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "vertices = points[:-1]\ncount = len(vertices)\ntol, cross_tol = policy.length, policy.squared_length"
+    },
+    {
+      "page": "08b",
+      "node": "outer",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "More (i, a) in enumerate(vertices)?"
+    },
+    {
+      "page": "08b",
+      "node": "edge",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "b = vertices[(i + 1) % count]\nprevious = vertices[i - 1]\nretraces = sum((p - q) * (r - q)\n    for p, q, r in zip(previous, a, b)) > tol**2"
+    },
+    {
+      "page": "08b",
+      "node": "retraces",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "abs(cross(previous, a, b)) <= cross_tol\nand retraces?"
+    },
+    {
+      "page": "08b",
+      "node": "inner",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "More j in range(i + 1, count)?"
+    },
+    {
+      "page": "08b",
+      "node": "neighbors",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "j == i + 1\nor (i == 0 and j == count - 1)?"
+    },
+    {
+      "page": "08b",
+      "node": "other_edge",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "c, d = vertices[j], vertices[(j + 1) % count]"
+    },
+    {
+      "page": "08b",
+      "node": "crosses",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "crosses = opposite(cross(a, b, c), cross(a, b, d))\ncrosses &= opposite(cross(c, d, a), cross(c, d, b))"
+    },
+    {
+      "page": "08b",
+      "node": "intersects",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "crosses or any((on_segment(a, b, c),\n    on_segment(a, b, d), on_segment(c, d, a),\n    on_segment(c, d, b)))?"
+    },
+    {
+      "page": "08b",
+      "node": "area",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "area = abs(math.fsum(a[0] * b[1] - b[0] * a[1]\n    for a, b in zip(vertices,\n                    vertices[1:] + vertices[:1]))) / 2"
+    },
+    {
+      "page": "08b",
+      "node": "area_threshold",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "area > cross_tol?"
+    },
+    {
+      "page": "08b",
+      "node": "return_area",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "return area"
+    },
+    {
+      "page": "08b",
+      "node": "return_none",
+      "ref": "polygon_area",
+      "lines": [
+        188,
+        221
+      ],
+      "text": "return None"
+    },
+    {
+      "page": "08b",
+      "node": "cross_note",
+      "ref": "polygon_area.cross",
+      "lines": [
+        194,
+        195
+      ],
+      "text": "cross(a, b, c):\nreturn (b[0] - a[0]) * (c[1] - a[1])\n       - (b[1] - a[1]) * (c[0] - a[0])"
+    },
+    {
+      "page": "08b",
+      "node": "opposite_note",
+      "ref": "polygon_area.opposite",
+      "lines": [
+        202,
+        203
+      ],
+      "text": "opposite(a, b):\nreturn (a > cross_tol and b < -cross_tol)\n    or (a < -cross_tol and b > cross_tol)"
+    },
+    {
+      "page": "08b",
+      "node": "segment_note",
+      "ref": "polygon_area.on_segment",
+      "lines": [
+        197,
+        200
+      ],
+      "text": "on_segment(a, b, p):\nreturn (abs(cross(a, b, p)) <= cross_tol\n    and min(a[0], b[0]) - tol <= p[0] <= max(a[0], b[0]) + tol\n    and min(a[1], b[1]) - tol <= p[1] <= max(a[1], b[1]) + tol)"
+    },
+    {
+      "page": "09a",
+      "node": "input",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "TraverseApp.input_file(loading)"
+    },
+    {
+      "page": "09a",
+      "node": "dialog",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "askopenfilename if loading else asksaveasfilename\nJSON input dialog, defaultextension='.json'"
+    },
+    {
+      "page": "09a",
+      "node": "path",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "path?"
+    },
+    {
+      "page": "09a",
+      "node": "load",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "loading?"
+    },
+    {
+      "page": "09a",
+      "node": "loadmodel",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "self.replace_model(InputModel.load(path))\nInputModel.load(): 09b; TraverseApp.replace_model(): 02e"
+    },
+    {
+      "page": "09a",
+      "node": "save",
+      "ref": "InputModel.save",
+      "lines": [
+        468,
+        471
+      ],
+      "text": "self.model.save(path)\nInputModel.save entry below"
+    },
+    {
+      "page": "09a",
+      "node": "status",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "self.status.set('Inputs loaded.' if loading else\n'Inputs saved (including unknown flags).')"
+    },
+    {
+      "page": "09a",
+      "node": "inputerror",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "except (OSError, ValueError, TypeError) as error\nmessagebox.showerror('Input File Error', str(error))"
+    },
+    {
+      "page": "09a",
+      "node": "inputret",
+      "ref": "TraverseApp.input_file",
+      "lines": [
+        933,
+        946
+      ],
+      "text": "return / implicit return None\nInput-file callback resumes root.mainloop"
+    },
+    {
+      "page": "09a",
+      "node": "savestart",
+      "ref": "InputModel.save",
+      "lines": [
+        468,
+        471
+      ],
+      "text": "InputModel.save(path)\nCalled by input_file(False)"
+    },
+    {
+      "page": "09a",
+      "node": "savedata",
+      "ref": "InputModel.save",
+      "lines": [
+        468,
+        471
+      ],
+      "text": "data = {\"version\": 1, \"rows\": [asdict(row) for row in self.rows],\n        \"initial_e\": self.initial_e, \"initial_n\": self.initial_n,\n        \"unit\": self.unit}"
+    },
+    {
+      "page": "09a",
+      "node": "write",
+      "ref": "InputModel.save",
+      "lines": [
+        468,
+        471
+      ],
+      "text": "Path(path).write_text(json.dumps(data, indent=2,\nensure_ascii=False), encoding='utf-8')"
+    },
+    {
+      "page": "09a",
+      "node": "saveret",
+      "ref": "InputModel.save",
+      "lines": [
+        468,
+        471
+      ],
+      "text": "Implicit return None\nNo local catch; exceptions propagate to input_file"
+    },
+    {
+      "page": "09a",
+      "node": "export",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "TraverseApp.export()"
+    },
+    {
+      "page": "09a",
+      "node": "result",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "self.result is None?"
+    },
+    {
+      "page": "09a",
+      "node": "exportdialog",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "filedialog.asksaveasfilename\nDefault '.txt'; Text report / CSV report"
+    },
+    {
+      "page": "09a",
+      "node": "exportpath",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "path?"
+    },
+    {
+      "page": "09a",
+      "node": "report",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "export_report(path, self.model, self.result, self.selected)\nReport internals — page 11a"
+    },
+    {
+      "page": "09a",
+      "node": "exportstatus",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "self.status.set('Exported all solutions and numerical details.')"
+    },
+    {
+      "page": "09a",
+      "node": "exporterror",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "except OSError as error\nmessagebox.showerror('Export Failed', str(error))"
+    },
+    {
+      "page": "09a",
+      "node": "exportret",
+      "ref": "TraverseApp.export",
+      "lines": [
+        966,
+        976
+      ],
+      "text": "return / implicit return None\nExport callback resumes root.mainloop"
+    },
+    {
+      "page": "09b",
+      "node": "start",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "InputModel.load(path)"
+    },
+    {
+      "page": "09b",
+      "node": "read",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "data = json.loads(Path(path).read_text(encoding='utf-8'))"
+    },
+    {
+      "page": "09b",
+      "node": "version",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "data is dict; type(data.get('version')) is int;\nand data['version'] == 1?"
+    },
+    {
+      "page": "09b",
+      "node": "versionerror",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "raise TraverseError\nUnsupported traverse input file (version 1 required)."
+    },
+    {
+      "page": "09b",
+      "node": "rowsvalid",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "rows = data.get('rows')\nisinstance(rows, list) and 3 <= len(rows) <= 20?"
+    },
+    {
+      "page": "09b",
+      "node": "rowserror",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "raise TraverseError\nInput file must contain 3–20 rows."
+    },
+    {
+      "page": "09b",
+      "node": "fields",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "fields = {\"length\": str, \"bearing\": str,\n          \"length_unknown\": bool, \"bearing_unknown\": bool}"
+    },
+    {
+      "page": "09b",
+      "node": "next",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "Next row in rows?"
+    },
+    {
+      "page": "09b",
+      "node": "keys",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "isinstance(row, dict) and set(row) == set(fields)?"
+    },
+    {
+      "page": "09b",
+      "node": "keyerror",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "raise TraverseError\nInvalid side fields in input file."
+    },
+    {
+      "page": "09b",
+      "node": "types",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "Any type(row[key]) is not kind\nfor key, kind in fields.items()?"
+    },
+    {
+      "page": "09b",
+      "node": "typeerror",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "raise TraverseError\nSide values must be text; unknown flags must be booleans."
+    },
+    {
+      "page": "09b",
+      "node": "origin",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "data.get('unit') in ('m', 'ft') and\ninitial_e / initial_n are strings?"
+    },
+    {
+      "page": "09b",
+      "node": "originerror",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "raise TraverseError\nInvalid units or starting coordinates in input file."
+    },
+    {
+      "page": "09b",
+      "node": "make",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "Construct the InputModel instance from the saved row strings and flags."
+    },
+    {
+      "page": "09b",
+      "node": "return",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "return cls([DraftSide(**row) for row in rows],\n    data[\"initial_e\"], data[\"initial_n\"], data[\"unit\"])\nReturn to TraverseApp.input_file() on 09a."
+    },
+    {
+      "page": "09b",
+      "node": "propagate",
+      "ref": "InputModel.load",
+      "lines": [
+        474,
+        493
+      ],
+      "text": "Read / JSON exceptions propagate unchanged\ninput_file catches OSError, ValueError, TypeError"
+    },
+    {
+      "page": "10",
+      "node": "init",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "PlotView.__init__(parent)"
+    },
+    {
+      "page": "10",
+      "node": "setup",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "Set figure/canvas/axes to None; create frame and message.\ntry: import Matplotlib classes; create Figure(tight_layout=True),\naxes, FigureCanvasTkAgg, toolbar; pack plot widgets."
+    },
+    {
+      "page": "10",
+      "node": "children",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "Next widget in frame.winfo_children()?"
+    },
+    {
+      "page": "10",
+      "node": "preserve",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "widget is not self.message?"
+    },
+    {
+      "page": "10",
+      "node": "destroy",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "widget.destroy()"
+    },
+    {
+      "page": "10",
+      "node": "failure",
+      "ref": "PlotView.__init__",
+      "lines": [
+        588,
+        612
+      ],
+      "text": "Set figure/canvas/axes to None.\nself.message.configure('Plot unavailable (exception type)…')\nDisplay Matplotlib installation/update advice."
+    },
+    {
+      "page": "10",
+      "node": "initrender",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "self.render(None, None, 0)\nPlotView.render entry on 10a"
+    },
+    {
+      "page": "10",
+      "node": "return",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "return / implicit return None\nReturn to caller; event callbacks resume root.mainloop."
+    },
+    {
+      "page": "10a",
+      "node": "render",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "PlotView.render(model, result, selected)"
+    },
+    {
+      "page": "10a",
+      "node": "axes",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "self.axes is None?"
+    },
+    {
+      "page": "10a",
+      "node": "clear",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "axes = self.axes\naxes.clear()"
+    },
+    {
+      "page": "10a",
+      "node": "result",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "result?"
+    },
+    {
+      "page": "10a",
+      "node": "solution",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "solution = result.solutions[selected]\nUse solution.local_coordinates; no global-offset plotting."
+    },
+    {
+      "page": "10a",
+      "node": "segment",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "More (i, (a, b)) in enumerate(zip(\n    solution.local_coordinates, solution.local_coordinates[1:]))?"
+    },
+    {
+      "page": "10a",
+      "node": "draw",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "row = model.rows[i]\ncolor = \"#e11d48\" if row.length_unknown or row.bearing_unknown else \"#2563eb\"\naxes.plot(...); axes.annotate(...): arrow a to b and f\"P{i + 1}\""
+    },
+    {
+      "page": "10a",
+      "node": "labels",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "Mark local origin orange; set local axes labels and unit,\nsolution number and geometry_label title.\nself.message: known/solved colors and model origin."
+    },
+    {
+      "page": "10a",
+      "node": "empty",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "Set title 'Solve a traverse to plot its geometry'.\nself.message: 'Plotting uses solved geometry only.'"
+    },
+    {
+      "page": "10a",
+      "node": "redraw",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "axes.set_aspect('equal', adjustable='datalim')\naxes.grid(True, alpha=0.3)\nself.canvas.draw_idle()"
+    },
+    {
+      "page": "10a",
+      "node": "return",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "return / implicit return None\nReturn to caller; event callbacks resume root.mainloop."
+    },
+    {
+      "page": "10b",
+      "node": "return",
+      "ref": "PlotView.render",
+      "lines": [
+        614,
+        640
+      ],
+      "text": "return / implicit return None\nReturn to caller; event callbacks resume root.mainloop."
+    },
+    {
+      "page": "10b",
+      "node": "enlarge",
+      "ref": "TraverseApp.enlarge_plot",
+      "lines": [
+        948,
+        960
+      ],
+      "text": "TraverseApp.enlarge_plot()"
+    },
+    {
+      "page": "10b",
+      "node": "guard",
+      "ref": "TraverseApp.enlarge_plot",
+      "lines": [
+        948,
+        960
+      ],
+      "text": "self.result is None or self.plot.figure is None?"
+    },
+    {
+      "page": "10b",
+      "node": "new",
+      "ref": "TraverseApp.enlarge_plot",
+      "lines": [
+        948,
+        960
+      ],
+      "text": "self.plot_window is None?"
+    },
+    {
+      "page": "10b",
+      "node": "window",
+      "ref": "TraverseApp.enlarge_plot",
+      "lines": [
+        948,
+        960
+      ],
+      "text": "Create tk.Toplevel with screen_geometry-based size and title.\nself.popup = PlotView(self.plot_window)\nSet WM_DELETE_WINDOW callback to self.close_plot."
+    },
+    {
+      "page": "10b",
+      "node": "show",
+      "ref": "TraverseApp.enlarge_plot",
+      "lines": [
+        948,
+        960
+      ],
+      "text": "self.popup.render(self.model, self.result, self.selected)\nself.plot_window.lift()"
+    },
+    {
+      "page": "10b",
+      "node": "close",
+      "ref": "TraverseApp.close_plot",
+      "lines": [
+        962,
+        964
+      ],
+      "text": "TraverseApp.close_plot()\nWM_DELETE_WINDOW callback"
+    },
+    {
+      "page": "10b",
+      "node": "closewindow",
+      "ref": "TraverseApp.close_plot",
+      "lines": [
+        962,
+        964
+      ],
+      "text": "self.plot_window.destroy()\nself.plot_window = self.popup = None"
+    },
+    {
+      "page": "11a",
+      "node": "s",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "export_report(path, model, result, selected=0)"
+    },
+    {
+      "page": "11a",
+      "node": "open",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "csv_output = str(path).lower().endswith(\".csv\")\nOpen path: mode=\"w\", newline=\"\"; encoding=\n\"utf-8-sig\" if csv_output else \"utf-8\"."
+    },
+    {
+      "page": "11a",
+      "node": "writer",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "writer = csv.writer(stream) if csv_output else None\nDefine nested section(title, headers, rows)."
+    },
+    {
+      "page": "11a",
+      "node": "heading",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "section(\"ENGINEERING TRAVERSE SOLVER\", (), ...)\nCASES[result.case]; units; selected + 1."
+    },
+    {
+      "page": "11a",
+      "node": "input",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "section(\"INPUT DATA\", (\"Side\", \"Length\", \"Bearing\"), ...)\nEach input uses \"Unknown\" when its corresponding\nunknown flag is set."
+    },
+    {
+      "page": "11a",
+      "node": "solutions",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "Next index, solution in enumerate(result.solutions)?"
+    },
+    {
+      "page": "11a",
+      "node": "summary",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "section(f\"SOLUTION {index + 1}\", (), ...)\nrows from solution_summary(model, result, index).splitlines()\nSee page 11b."
+    },
+    {
+      "page": "11a",
+      "node": "calculations",
+      "ref": "calculation_rows",
+      "lines": [
+        496,
+        502
+      ],
+      "text": "section(\"TRAVERSE CALCULATIONS\", TABLE_HEADERS, ...)\nrows from calculation_rows(solution); float cells use .8f.\nSee calculation_rows() note on page 11b."
+    },
+    {
+      "page": "11a",
+      "node": "coordinates",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "section(\"COORDINATES\", (\"Point\", \"Northing\", \"Easting\"), ...)\nAll solution.coordinates; label f\"P{i + 1}\" or \"Return to P1\";\nNorthing/Easting use .8f."
+    },
+    {
+      "page": "11a",
+      "node": "details",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "section(\"CALCULATION DETAILS\", (), ...)\nOne row per result.details.splitlines()."
+    },
+    {
+      "page": "11a",
+      "node": "end",
+      "ref": "export_report",
+      "lines": [
+        530,
+        569
+      ],
+      "text": "Exit with block (close stream); return None"
+    },
+    {
+      "page": "11a",
+      "node": "errors",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "No local exception handler in export_report() or section().\nFile / encoding / CSV / formatting errors propagate;\nthe with block closes an already-open stream on exit."
+    },
+    {
+      "page": "11b",
+      "node": "s",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "solution_summary(model, result, selected)"
+    },
+    {
+      "page": "11b",
+      "node": "base",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "solution = result.solutions[selected]; unit = model.unit\nStart lines with CASES[result.case], geometry_label,\nselected solution number and \"SOLVED VALUES\"."
+    },
+    {
+      "page": "11b",
+      "node": "rows",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "Next i, (row, side) in\nenumerate(zip(model.rows, solution.sides), 1)?"
+    },
+    {
+      "page": "11b",
+      "node": "length",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "row.length_unknown?"
+    },
+    {
+      "page": "11b",
+      "node": "lengthline",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "Append solved side.length with .4f and unit."
+    },
+    {
+      "page": "11b",
+      "node": "bearing",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "row.bearing_unknown?"
+    },
+    {
+      "page": "11b",
+      "node": "bearingline",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "Append display_azimuth(side.azimuth) and\nquadrantal(side.azimuth)."
+    },
+    {
+      "page": "11b",
+      "node": "metrics",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "area = formatted solution.area if not None else \"Unavailable\"\nAppend perimeter, area and each\nf\"WARNING: {warning}\" in solution.warnings."
+    },
+    {
+      "page": "11b",
+      "node": "multiple",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "len(result.solutions) > 1?"
+    },
+    {
+      "page": "11b",
+      "node": "multiline",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "Append warning: multiple equation solutions exist;\nreview geometry and engineering constraints."
+    },
+    {
+      "page": "11b",
+      "node": "return",
+      "ref": "solution_summary",
+      "lines": [
+        509,
+        527
+      ],
+      "text": "Append residual-location and imposed-closure caveat.\nReturn \"\\n\".join(lines)."
+    },
+    {
+      "page": "11b",
+      "node": "generator",
+      "ref": "calculation_rows",
+      "lines": [
+        496,
+        502
+      ],
+      "text": "calculation_rows(solution): for each i, side, read\nsolution.coordinates[i], [i+1] and solution.components[i].\nYield (i+1, side.length, quadrantal(side.azimuth),\nside.azimuth, north, east, start_n, start_e, end_n, end_e)."
+    },
+    {
+      "page": "11c",
+      "node": "ss",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "export_report.section(title, headers, rows)"
+    },
+    {
+      "page": "11c",
+      "node": "strings",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "rows = [[str(value) for value in row] for row in rows]"
+    },
+    {
+      "page": "11c",
+      "node": "csv",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "writer?"
+    },
+    {
+      "page": "11c",
+      "node": "csvwrite",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "writer.writerow([title]); writer.writerow(headers)\nwriter.writerows(rows); writer.writerow([])"
+    },
+    {
+      "page": "11c",
+      "node": "txttitle",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "stream.write(title + \"\\n\" + \"=\" * len(title) + \"\\n\")"
+    },
+    {
+      "page": "11c",
+      "node": "headers",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "headers?"
+    },
+    {
+      "page": "11c",
+      "node": "widths",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "widths = [max(len(row[i]) for row in\n[list(headers)] + rows) for i in range(len(headers))]"
+    },
+    {
+      "page": "11c",
+      "node": "row",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "Next row in [list(headers)] + rows?"
+    },
+    {
+      "page": "11c",
+      "node": "pad",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "stream.write(\"  \".join(v.ljust(w)\nfor v, w in zip(row, widths)) + \"\\n\")"
+    },
+    {
+      "page": "11c",
+      "node": "plain",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "stream.write(\"\\n\".join(row[0] for row in rows) + \"\\n\")"
+    },
+    {
+      "page": "11c",
+      "node": "blank",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "stream.write(\"\\n\")"
+    },
+    {
+      "page": "11c",
+      "node": "sectionend",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "Return None to export_report()"
+    },
+    {
+      "page": "11c",
+      "node": "errors",
+      "ref": "export_report.section",
+      "lines": [
+        535,
+        551
+      ],
+      "text": "No local exception handler in export_report() or section().\nFile / encoding / CSV / formatting errors propagate;\nthe with block closes an already-open stream on exit."
+    },
+    {
+      "page": "11d",
+      "node": "es",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "explain_result(sides, case, target, solutions, condition_number=None)"
+    },
+    {
+      "page": "11d",
+      "node": "setup",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "east, north = target; begin lines with CASES[case],\nazimuth convention, component/closure equations, target.\nCollect length_ids and bearing_ids."
+    },
+    {
+      "page": "11d",
+      "node": "caseprose",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Append the case-specific explanatory lines.\ncase 0: hypot / atan2; case 1: quadratic;\ncase 2: _length_system / condition number; else: two vectors."
+    },
+    {
+      "page": "11d",
+      "node": "solutions",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Next index, solution in enumerate(solutions, 1)?"
+    },
+    {
+      "page": "11d",
+      "node": "title",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Append blank line and solution number / geometry_label."
+    },
+    {
+      "page": "11d",
+      "node": "sides",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Next i, (original, solved) in\nenumerate(zip(sides, solution.sides), 1)?"
+    },
+    {
+      "page": "11d",
+      "node": "elength",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "original.length is None?"
+    },
+    {
+      "page": "11d",
+      "node": "elengthline",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Append solved.length with .12g."
+    },
+    {
+      "page": "11d",
+      "node": "ebearing",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "original.azimuth is None?"
+    },
+    {
+      "page": "11d",
+      "node": "ebearingline",
+      "ref": "quadrantal",
+      "lines": [
+        82,
+        95
+      ],
+      "text": "Append solved.azimuth with .12g and\nquadrantal(solved.azimuth)."
+    },
+    {
+      "page": "11d",
+      "node": "residual",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Append substitution residual: solution.sum_e,\nsolution.sum_n, solution.closure; then solution.warnings."
+    },
+    {
+      "page": "11d",
+      "node": "ereturn",
+      "ref": "explain_result",
+      "lines": [
+        324,
+        369
+      ],
+      "text": "Append imposed-closure / numerical-substitution caveat.\nReturn \"\\n\".join(lines)."
+    },
+    {
+      "page": "11d",
+      "node": "generator",
+      "ref": "calculation_rows",
+      "lines": [
+        496,
+        502
+      ],
+      "text": "calculation_rows(solution): for each i, side, read\nsolution.coordinates[i], [i+1] and solution.components[i].\nYield (i+1, side.length, quadrantal(side.azimuth),\nside.azimuth, north, east, start_n, start_e, end_n, end_e)."
+    }
+  ],
+  "layout_metrics": [
+    {
+      "page": "01",
+      "width": 1358,
+      "height": 1290,
+      "pdf_body_font_pt": 9.13
+    },
+    {
+      "page": "02a",
+      "width": 1144,
+      "height": 882,
+      "pdf_body_font_pt": 10.84
+    },
+    {
+      "page": "02b",
+      "width": 774,
+      "height": 764,
+      "pdf_body_font_pt": 16.01
+    },
+    {
+      "page": "02c",
+      "width": 700,
+      "height": 1439,
+      "pdf_body_font_pt": 12.38
+    },
+    {
+      "page": "02d",
+      "width": 998,
+      "height": 515,
+      "pdf_body_font_pt": 12.41
+    },
+    {
+      "page": "02e",
+      "width": 700,
+      "height": 703,
+      "pdf_body_font_pt": 17.7
+    },
+    {
+      "page": "03a",
+      "width": 1394,
+      "height": 833,
+      "pdf_body_font_pt": 8.89
+    },
+    {
+      "page": "03b",
+      "width": 1162,
+      "height": 924,
+      "pdf_body_font_pt": 10.66
+    },
+    {
+      "page": "03c",
+      "width": 1396,
+      "height": 680,
+      "pdf_body_font_pt": 8.88
+    },
+    {
+      "page": "03d",
+      "width": 1316,
+      "height": 717,
+      "pdf_body_font_pt": 9.41
+    },
+    {
+      "page": "03e",
+      "width": 865,
+      "height": 775,
+      "pdf_body_font_pt": 14.33
+    },
+    {
+      "page": "04a",
+      "width": 1430,
+      "height": 1643,
+      "pdf_body_font_pt": 8.67
+    },
+    {
+      "page": "04b",
+      "width": 1112,
+      "height": 1387,
+      "pdf_body_font_pt": 11.14
+    },
+    {
+      "page": "05",
+      "width": 1291,
+      "height": 990,
+      "pdf_body_font_pt": 9.6
+    },
+    {
+      "page": "06",
+      "width": 802,
+      "height": 1452,
+      "pdf_body_font_pt": 12.27
+    },
+    {
+      "page": "07",
+      "width": 1542,
+      "height": 1385,
+      "pdf_body_font_pt": 8.04
+    },
+    {
+      "page": "08a",
+      "width": 794,
+      "height": 1207,
+      "pdf_body_font_pt": 14.76
+    },
+    {
+      "page": "08b",
+      "width": 830,
+      "height": 1513,
+      "pdf_body_font_pt": 11.78
+    },
+    {
+      "page": "09a",
+      "width": 1448,
+      "height": 839,
+      "pdf_body_font_pt": 8.56
+    },
+    {
+      "page": "09b",
+      "width": 1486,
+      "height": 1071,
+      "pdf_body_font_pt": 8.34
+    },
+    {
+      "page": "10",
+      "width": 834,
+      "height": 757,
+      "pdf_body_font_pt": 14.85
+    },
+    {
+      "page": "10a",
+      "width": 905,
+      "height": 1004,
+      "pdf_body_font_pt": 13.69
+    },
+    {
+      "page": "10b",
+      "width": 766,
+      "height": 727,
+      "pdf_body_font_pt": 16.18
+    },
+    {
+      "page": "11a",
+      "width": 700,
+      "height": 1167,
+      "pdf_body_font_pt": 15.27
+    },
+    {
+      "page": "11b",
+      "width": 908,
+      "height": 944,
+      "pdf_body_font_pt": 13.65
+    },
+    {
+      "page": "11c",
+      "width": 996,
+      "height": 954,
+      "pdf_body_font_pt": 12.44
+    },
+    {
+      "page": "11d",
+      "width": 905,
+      "height": 1208,
+      "pdf_body_font_pt": 13.69
+    }
+  ]
+}

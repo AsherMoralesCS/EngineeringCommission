@@ -56,3 +56,7 @@ python -m unittest -v test_gui
 ```
 
 GUI regression tests cover 1366×768 screen fit, footer visibility, 20-row mouse scrolling, preserving results when relabeling units, input save/load actions, local plots at large coordinate offsets, crossed-solution labels, and recovery from Matplotlib initialization errors. GUI tests are skipped when no display is available.
+
+## Source-based flowcharts
+
+The [editable diagrams.net file](docs/flowcharts/Engineering_Traverse_Solver_Flowcharts.drawio), [PDF](docs/flowcharts/Engineering_Traverse_Solver_Flowcharts.pdf), and [complete ZIP bundle](docs/flowcharts/Engineering_Traverse_Solver_Flowcharts.zip) document `traverse_solver.py` at commit `0cf64fb`. Individual SVG pages and source traceability are in [docs/flowcharts](docs/flowcharts).
