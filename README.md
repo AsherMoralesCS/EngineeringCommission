@@ -1,56 +1,58 @@
 # Engineering Traverse Solver
 
-A self-contained Engineering 1035 desktop calculator for closed traverses with two omitted quantities. All application code and regression tests are in **`traverse_solver.py`**.
-
-## Run
-
-Requires **Python 3.10+**, Tkinter, and a graphical desktop session:
+Engineering 1035 desktop calculator for closed traverses with two omitted quantities. The student application is **one runnable file**, `traverse_solver.py`; regression tests are separate. Requires Python 3.10+ and Tkinter.
 
 ```bash
 python traverse_solver.py
 ```
 
-Tkinter ships with most desktop Python installations. On Debian/Ubuntu, install `python3-tk` if needed. The solver works offline and requires no NumPy or SciPy. Matplotlib is optional (`python -m pip install matplotlib`); without it, the application draws an equal-scale plot using Tkinter Canvas.
-
-1. Choose 3–20 sides and click **Generate Traverse**. Generating starts a fresh input table.
-2. Enter positive known lengths and bearings. Mark exactly two quantities **Unknown** using the status selectors; disabled input values are ignored.
-3. Use azimuths clockwise from North, or select **Quadrantal Bearing** and use the N/S and E/W controls. Switching formats converts valid known bearings automatically.
-4. Enter angles as decimal degrees (`125.5`), DMS (`125°30'00"`), or colon-separated DMS (`125:30:00`). In azimuth mode, full quadrantal text such as `N 30 E` also works.
-5. Optionally enter initial coordinates and select metres or feet. The unit selector labels the supplied numbers; it does not convert them.
-6. Click **Solve Traverse**. Review solved quantities, closure, area, the complete side table, coordinates, and calculation details in the tabs.
-7. The live plot beside the results previews known geometry before solving. Blue sides are known, red sides were solved, and dashed amber spans are closure-assumption guides. A span across several omitted sides is not an estimate of those individual sides. Known sides trapped between omissions remain unpositioned until solving. Drag the divider to resize the plot and results.
-8. If multiple solutions exist, review each with the solution selector. Extra engineering constraints are required to select between them. Every solution is included in TXT/CSV exports.
-9. Use **Plot Traverse** for an enlarged view or **Export Results** for reports. Both the embedded and enlarged views update when you solve or change the selected solution. Matplotlib's toolbar supports zoom, pan, and image saving. Editing inputs invalidates previous numerical results and refreshes the unsolved preview. The built-in Canvas plot remains available without Matplotlib.
-
-**Load Example** provides an 80 × 100 rectangle with omitted values for each of the four cases. Select the case beside the button, load it, then solve. Case IV demonstrates two valid solutions; one crosses itself, so its polygon area is unavailable.
-
-## Mathematics and limits
-
-The program uses `ΔE = L sin(θ)` and `ΔN = L cos(θ)` with azimuth clockwise from North. It preserves full floating-point precision internally.
-
-- **Case I:** direct closure vector, length by `hypot`, bearing by `atan2(E, N)`.
-- **Case II:** ray/circle intersection, retaining all distinct positive-length roots.
-- **Case III:** a 2 × 2 linear system, rejecting parallel or nearly parallel directions and nonpositive results.
-- **Case IV:** exact circle/circle intersection, enumerating both mirror solutions and deduplicating tangent solutions. This analytical strategy replaces iterative root searches and needs no initial guesses. Concentric equal circles are explicitly reported as infinitely ambiguous.
-
-Each candidate is substituted into both closure equations and must meet a length-scaled tolerance. Area uses local coordinates to reduce cancellation from large initial coordinate offsets. Crossed, touching, overlapping, and degenerate polygons produce an area warning rather than a misleading area. No traverse adjustment is applied.
-
-Closure is imposed by solving the omitted values. “Perfect / Numerical Closure” describes the mathematical residual and does **not** establish measurement accuracy. Very nearly parallel bearings and quantities smaller than the numerical tolerance may be indeterminate at floating-point precision.
-
-## Verification
-
-Run the embedded numerical tests without a display or optional packages:
+Tkinter normally ships with desktop Python (Debian/Ubuntu: `python3-tk`). The solver and input/report files work offline using the standard library. **Plotting requires Matplotlib**:
 
 ```bash
-python traverse_solver.py --self-test
+python -m pip install matplotlib
 ```
 
-The suite covers all four examples, 240 rotated/scaled pentagon problems, decimal/DMS and quadrant conversion, multiple roots, tangency, impossible/singular/indeterminate data, area validity, coordinate offsets, preview station placement, solved-side highlighting, and both report formats.
+If Matplotlib is absent, incompatible, or fails during initialization, the app still opens with numerical solving and exports available. It shows an installation message in the plot pane. There is one plotting backend and no duplicate Canvas renderer.
 
-With a graphical display available, exercise the actual GUI widgets and plotting/export paths:
+## Using the calculator
+
+- Set **Sides** to 3–20. Spinner arrows update the table immediately; typed counts apply on Enter or when leaving the field. Existing rows are preserved. Scroll the table with the wheel or scrollbar; drag the horizontal divider to give it more room.
+- Enter positive lengths and mark omitted values with the **Unknown** checkboxes. Case detection uses those flags directly. Known bearings accept azimuth (`125.5`), DMS (`125°30'00"` or `125:30:00`), or quadrantal text (`N 30° E`). All internal bearings are clockwise from North: 0° North, 90° East.
+- Set initial Easting/Northing and units. Switching **m/ft** relabels values and retains results; it does not convert distances. Changes to measurements or starting coordinates invalidate the previous solution.
+- **Load Example** supplies valid rectangle data for each case. **Solve Traverse** shows omitted values, perimeter, area, calculation details, and a scrollable table with side components and station coordinates.
+- Multiple solutions appear in the selector. Simple polygons are listed first; crossed or degenerate solutions are explicitly flagged and have no area. They remain available because they satisfy the equations, but require additional engineering constraints to select.
+- The solved plot uses equal scales, station labels, arrows, and local coordinates relative to the supplied origin. Known sides are blue and solved sides red. **Enlarge Plot** opens a larger view; Matplotlib's toolbar provides zoom, pan, and image saving. No assumed unsolved geometry is plotted.
+- **Save Inputs / Load Inputs** round-trip JSON, preserving text, unknown flags, side count, coordinates, and units, including incomplete drafts. **Export Results** writes all candidates as a formatted TXT report or CSV. Exported reports also include calculations and coordinates.
+
+The window leaves room for desktop panels and title bars based on the reported screen dimensions. Both the input/result split and the result/plot split are resizable. The status bar is reserved at the bottom; text and calculation tables scroll.
+
+## Numerical interpretation
+
+`ΔE = L sin(θ)` and `ΔN = L cos(θ)`. Four independent case functions return candidate lists; a separate explanation function builds the derivation. `solve_traverse` returns a `SolveResult` dataclass.
+
+- **Case I:** direct closure vector and `atan2(E, N)`.
+- **Case II:** positive ray/circle intersections, retaining all isolated positive roots.
+- **Case III:** a 2 × 2 length system. Parallel directions are rejected. If the unit-vector determinant has magnitude below **0.01**, a warning and the **2-norm condition number** appear in the results. Check bearings carefully: small input errors can cause large length errors.
+- **Case IV:** circle/circle intersections, including mirror solutions and tangent deduplication. Equal, opposite free bearings are reported as infinitely ambiguous.
+
+Lengths, squared quantities, and dimensionless matrix diagnostics have separately named tolerances in `NumericalPolicy`. Length residuals and deduplication scale with traverse size; a machine-epsilon bound handles square-root roundoff at tangency. Area/intersection checks operate on local coordinates, before adding large global offsets.
+
+A negative solved length suggests checking for a reversed bearing (180°), the bearing quadrant, side order, or a mistyped length. Errors give these checks explicitly.
+
+**Closure is imposed by solving the equations.** Numerical residuals appear in Calculation Details as substitution checks, never as a survey accuracy headline or a “Perfect” precision rating. This app does not adjust measured traverses: Bowditch/compass-rule adjustment and DMD area are outside this omitted-measurement workflow. Area uses the coordinate/shoelace method and is unavailable for crossed, touching, retraced, or degenerate boundaries.
+
+## Tests
 
 ```bash
-python traverse_solver.py --gui-test
+python -m unittest -v test_traverse_solver
 ```
 
-The GUI smoke test covers all four cases in both input formats, alternative solution selection, live previews, embedded and enlarged Matplotlib/built-in plots, TXT/CSV export dialogs, 20-side generation, clear, and invalid input. On a headless Linux machine, a virtual X display is needed for this check; numerical tests remain display-independent.
+Covers all four examples, nonrectangular cases, tangent/multiple solutions, singular/impossible data, conditioning warnings, actionable negative-length errors, large coordinate offsets, strict ASCII numeric parsing, DMS/cardinal formatting, input persistence, and both report formats.
+
+With a desktop display:
+
+```bash
+python -m unittest -v test_gui
+```
+
+GUI regression tests cover 1366×768 screen fit, footer visibility, 20-row mouse scrolling, preserving results when relabeling units, input save/load actions, local plots at large coordinate offsets, crossed-solution labels, and recovery from Matplotlib initialization errors. GUI tests are skipped when no display is available.

@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Engineering 1035 closed-traverse calculator. Run with Python 3.10+.
+"""Engineering 1035 omitted-measurement solver. Run: python traverse_solver.py.
 
-No computational packages are required. Matplotlib is optional. Use --self-test
-for the embedded numerical tests, or --gui-test with a display for a GUI smoke test.
-Azimuths are measured clockwise from North; vectors are (Easting, Northing).
+The desktop app is distributed as one file. Matplotlib enables solved plots;
+without it, numerical solving, input persistence, and report export still work.
+Tests live separately in test_traverse_solver.py.
 """
 from __future__ import annotations
 
-import argparse
+from dataclasses import asdict, dataclass, replace
 import csv
-from dataclasses import dataclass, replace
-import io
-import math
+import json
 from pathlib import Path
+import math
 import re
 import sys
-import unittest
+
+# ----------------------- Parsing and numerical core -----------------------
 
 CASES = (
     "Case I: Length & Bearing of One Side Omitted",
@@ -26,35 +26,39 @@ CASES = (
 
 
 class TraverseError(ValueError):
-    """A user-correctable input or geometric problem."""
+    """An input or geometric problem that the student can correct."""
+
+
+_DECIMAL = r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
 
 
 def number(text, label="Value"):
-    try:
-        value = float(text)
-    except (ValueError, TypeError):
-        raise TraverseError(f"{label} must be a number.") from None
+    token = str(text).strip()
+    if not re.fullmatch(_DECIMAL, token):
+        raise TraverseError(f"{label} must be an ASCII decimal number (no underscores).")
+    value = float(token)
     if not math.isfinite(value):
         raise TraverseError(f"{label} must be finite.")
     return value
 
 
 def parse_angle(text):
-    """Parse decimal degrees, symbol DMS, or colon/space-separated DMS."""
-    text = str(text).strip().replace("º", "°").replace("′", "'").replace("″", '"')
-    decimal = re.fullmatch(r"([+]?\d+(?:\.\d*)?|[+]?\.\d+)\s*°?", text)
-    if decimal:
-        return number(decimal[1], "Angle")
+    text = str(text).strip().replace("º", "°").replace("′", "'")
+    text = text.replace("″", '\"').replace("''", '\"').replace("’", "'")
+    if re.fullmatch(_DECIMAL + r"\s*°?", text):
+        return number(text.rstrip("°").strip(), "Angle")
     patterns = (
-        r"(\d+)\s*°\s*(\d+(?:\.\d*)?)\s*'\s*(?:(\d+(?:\.\d*)?)\s*\")?",
-        r"(\d+)\s*[:\s]\s*(\d+(?:\.\d*)?)\s*[:\s]\s*(\d+(?:\.\d*)?)",
+        r"([0-9]+)\s*°\s*([0-9]+(?:\.[0-9]*)?)\s*'\s*"
+        r"(?:([0-9]+(?:\.[0-9]*)?)\s*\")?",
+        r"([0-9]+)\s*[:\s]\s*([0-9]+(?:\.[0-9]*)?)\s*[:\s]\s*"
+        r"([0-9]+(?:\.[0-9]*)?)",
     )
     for pattern in patterns:
         match = re.fullmatch(pattern, text)
         if match:
-            degrees, minutes, seconds = (float(x or 0) for x in match.groups())
-            if not (0 <= minutes < 60 and 0 <= seconds < 60):
-                raise TraverseError("DMS minutes and seconds must each be in [0, 60).")
+            degrees, minutes, seconds = (float(part or 0) for part in match.groups())
+            if not (minutes < 60 and seconds < 60):
+                raise TraverseError("DMS minutes and seconds must be in [0, 60).")
             return degrees + minutes / 60 + seconds / 3600
     raise TraverseError("Use decimal degrees (125.5) or DMS (125°30'00\").")
 
@@ -63,41 +67,36 @@ def parse_bearing(text):
     text = str(text).strip().upper()
     match = re.fullmatch(r"([NS])\s*(.*?)\s*([EW])", text)
     if match:
-        north_south, angle, east_west = match.groups()
-        angle = parse_angle(angle)
+        ns, angle_text, ew = match.groups()
+        angle = parse_angle(angle_text)
         if not 0 <= angle <= 90:
             raise TraverseError("Quadrantal angles must be between 0° and 90°.")
         return {("N", "E"): angle, ("S", "E"): 180 - angle,
-                ("S", "W"): 180 + angle, ("N", "W"): 360 - angle}[
-                    north_south, east_west] % 360
+                ("S", "W"): 180 + angle, ("N", "W"): 360 - angle}[ns, ew] % 360
     angle = parse_angle(text)
     if not 0 <= angle <= 360:
-        raise TraverseError("Azimuth must be between 0° and 360° (360° equals North).")
+        raise TraverseError("Azimuth must be between 0° and 360°.")
     return angle % 360
 
 
-def dms(angle):
-    # Round total seconds first so 59.999 seconds carries into the next minute.
-    hundredths = round(angle * 3600 * 100)
-    degrees, remainder = divmod(hundredths, 360000)
-    minutes, seconds = divmod(remainder, 6000)
-    return f"{degrees}°{minutes:02d}'{seconds / 100:05.2f}\""
+def quadrantal(angle):
+    # Round before choosing a quadrant so carrying seconds gives canonical cardinals.
+    ticks = round((angle % 360) * 360000) % 129600000
+    if ticks <= 32400000:
+        ns, ticks, ew = "N", ticks, "E"
+    elif ticks <= 64800000:
+        ns, ticks, ew = "S", 64800000 - ticks, "E"
+    elif ticks < 97200000:
+        ns, ticks, ew = "S", ticks - 64800000, "W"
+    else:
+        ns, ticks, ew = "N", 129600000 - ticks, "W"
+    degrees, rest = divmod(ticks, 360000)
+    minutes, seconds = divmod(rest, 6000)
+    return f"{ns} {degrees}°{minutes:02d}'{seconds / 100:05.2f}\" {ew}"
 
 
-def quadrant_parts(azimuth):
-    angle = azimuth % 360
-    if angle <= 90:
-        return "N", angle, "E"
-    if angle <= 180:
-        return "S", 180 - angle, "E"
-    if angle <= 270:
-        return "S", angle - 180, "W"
-    return "N", 360 - angle, "W"
-
-
-def quadrantal(azimuth):
-    ns, angle, ew = quadrant_parts(azimuth)
-    return f"{ns} {dms(angle)} {ew}"
+def display_azimuth(angle):
+    return f"{round(angle % 360, 4) % 360:.4f}"
 
 
 @dataclass(frozen=True)
@@ -106,44 +105,34 @@ class TraverseSide:
     azimuth: float | None
 
 
-def detect_case(sides):
-    lengths = [i for i, side in enumerate(sides) if side.length is None]
-    bearings = [i for i, side in enumerate(sides) if side.azimuth is None]
-    if len(lengths) == len(bearings) == 1:
-        return 0 if lengths == bearings else 1
-    if len(lengths) == 2 and not bearings:
-        return 2
-    if len(bearings) == 2 and not lengths:
-        return 3
-    raise TraverseError("Mark exactly two unknown quantities: length and bearing on one side; "
-                        "length and bearing on different sides; two lengths; or two bearings.")
+@dataclass(frozen=True)
+class NumericalPolicy:
+    scale: float
+    relative: float = 1e-10
 
+    @property
+    def length(self):
+        return self.scale * self.relative
 
-def unit_vector(angle):
-    angle = math.radians(angle)
-    return math.sin(angle), math.cos(angle)
+    @property
+    def squared_length(self):
+        return self.scale * self.length
 
+    @property
+    def roundoff_squared(self):
+        return 64 * sys.float_info.epsilon * self.scale**2
 
-def vector(side):
-    east, north = unit_vector(side.azimuth)
-    return side.length * east, side.length * north
-
-
-def azimuth(east, north):
-    result = math.degrees(math.atan2(east, north)) % 360
-    # A tiny negative angle can round to exactly 360 during modulo reduction.
-    return 0.0 if result == 360 else result
-
-
-def display_azimuth(angle):
-    return f"{round(angle % 360, 4) % 360:.4f}"
+    # Unit-vector determinants are dimensionless; length tolerances do not apply.
+    singular = 64 * sys.float_info.epsilon
+    conditioning_warning = 0.01
 
 
 @dataclass
 class Solution:
     sides: list[TraverseSide]
-    coordinates: list[tuple[float, float]]  # (E, N), including final endpoint
     components: list[tuple[float, float]]
+    local_coordinates: list[tuple[float, float]]
+    coordinates: list[tuple[float, float]]
     perimeter: float
     sum_e: float
     sum_n: float
@@ -153,242 +142,355 @@ class Solution:
     tolerance: float
 
     @property
-    def precision(self):
-        if self.closure <= self.tolerance:
-            return "Perfect / Numerical Closure"
-        return f"1 : {self.perimeter / self.closure:,.0f}"
+    def geometry_label(self):
+        return "Simple polygon" if self.area is not None else "Crossed or degenerate"
 
 
-def polygon_area(points, tolerance):
-    """Return unsigned shoelace area, rejecting crossed/touching polygons."""
-    # Work relative to the origin to avoid cancellation with large site coordinates.
-    origin_e, origin_n = points[0]
-    points = [(e - origin_e, n - origin_n) for e, n in points[:-1]]
-    count = len(points)
-    extent = max((math.hypot(e, n) for e, n in points), default=1)
-    cross_tolerance = tolerance * max(extent, 1)
+@dataclass
+class SolveResult:
+    case: int
+    solutions: list[Solution]
+    details: str
+    condition_number: float | None = None
+
+
+def case_from_unknowns(length_ids, bearing_ids):
+    lengths, bearings = set(length_ids), set(bearing_ids)
+    if len(lengths) == len(bearings) == 1:
+        return 0 if lengths == bearings else 1
+    if len(lengths) == 2 and not bearings:
+        return 2
+    if len(bearings) == 2 and not lengths:
+        return 3
+    raise TraverseError("Mark exactly two unknowns: one length and one bearing, "
+                        "two lengths, or two bearings.")
+
+
+def detect_case(sides):
+    return case_from_unknowns([i for i, s in enumerate(sides) if s.length is None],
+                              [i for i, s in enumerate(sides) if s.azimuth is None])
+
+
+def unit_vector(angle):
+    return math.sin(math.radians(angle)), math.cos(math.radians(angle))
+
+
+def vector(side):
+    east, north = unit_vector(side.azimuth)
+    return side.length * east, side.length * north
+
+
+def vector_azimuth(east, north):
+    angle = math.degrees(math.atan2(east, north)) % 360
+    return 0.0 if angle == 360 else angle
+
+
+def polygon_area(points, policy):
+    """Shoelace area, or None for intersecting, touching, or retraced boundaries."""
+    vertices = points[:-1]
+    count = len(vertices)
+    tol, cross_tol = policy.length, policy.squared_length
 
     def cross(a, b, c):
         return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
 
     def on_segment(a, b, p):
-        return (abs(cross(a, b, p)) <= cross_tolerance
-                and min(a[0], b[0]) - tolerance <= p[0] <= max(a[0], b[0]) + tolerance
-                and min(a[1], b[1]) - tolerance <= p[1] <= max(a[1], b[1]) + tolerance)
+        return (abs(cross(a, b, p)) <= cross_tol
+                and min(a[0], b[0]) - tol <= p[0] <= max(a[0], b[0]) + tol
+                and min(a[1], b[1]) - tol <= p[1] <= max(a[1], b[1]) + tol)
 
-    for i in range(count):
-        a, b = points[i], points[(i + 1) % count]
-        previous = points[(i - 1) % count]
-        # Consecutive segments may share an endpoint, but must not overlap.
-        if (abs(cross(previous, a, b)) <= cross_tolerance
-                and (previous[0] - a[0]) * (b[0] - a[0])
-                + (previous[1] - a[1]) * (b[1] - a[1]) > tolerance ** 2):
-            return None, ["Area unavailable: adjacent sides overlap or retrace."]
+    def opposite(a, b):
+        return (a > cross_tol and b < -cross_tol) or (a < -cross_tol and b > cross_tol)
+
+    for i, a in enumerate(vertices):
+        b, previous = vertices[(i + 1) % count], vertices[i - 1]
+        retraces = sum((p - q) * (r - q) for p, q, r in zip(previous, a, b)) > tol**2
+        if abs(cross(previous, a, b)) <= cross_tol and retraces:
+            return None
         for j in range(i + 1, count):
             if j == i + 1 or (i == 0 and j == count - 1):
                 continue
-            c, d = points[j], points[(j + 1) % count]
-            ab_c, ab_d, cd_a, cd_b = cross(a, b, c), cross(a, b, d), cross(c, d, a), cross(c, d, b)
-            proper_cross = ((ab_c > cross_tolerance and ab_d < -cross_tolerance
-                             or ab_c < -cross_tolerance and ab_d > cross_tolerance)
-                            and (cd_a > cross_tolerance and cd_b < -cross_tolerance
-                                 or cd_a < -cross_tolerance and cd_b > cross_tolerance))
-            if proper_cross or any((on_segment(a, b, c), on_segment(a, b, d),
-                                    on_segment(c, d, a), on_segment(c, d, b))):
-                return None, ["Area unavailable: nonadjacent sides intersect or touch. "
-                              "Closure alone does not establish a simple polygon."]
-    area = abs(math.fsum(points[i][0] * points[(i + 1) % count][1]
-                         - points[(i + 1) % count][0] * points[i][1]
-                         for i in range(count))) / 2
-    if area <= cross_tolerance:
-        return None, ["Area unavailable: the traverse is degenerate or collinear."]
-    return area, []
+            c, d = vertices[j], vertices[(j + 1) % count]
+            crosses = opposite(cross(a, b, c), cross(a, b, d))
+            crosses &= opposite(cross(c, d, a), cross(c, d, b))
+            if crosses or any((on_segment(a, b, c), on_segment(a, b, d),
+                               on_segment(c, d, a), on_segment(c, d, b))):
+                return None
+    area = abs(math.fsum(a[0] * b[1] - b[0] * a[1]
+                         for a, b in zip(vertices, vertices[1:] + vertices[:1]))) / 2
+    return area if area > cross_tol else None
 
 
-class TraverseSolver:
-    """Analytical solvers enumerate every isolated, positive-length solution."""
+def solve_case_i(sides, target, policy):
+    i = next(i for i, s in enumerate(sides) if s.length is None)
+    length = math.hypot(*target)
+    if length <= policy.length:
+        raise TraverseError("The omitted side has zero length; its bearing is indeterminate.")
+    result = list(sides)
+    result[i] = TraverseSide(length, vector_azimuth(*target))
+    return [result]
 
-    def solve(self, sides, initial_e=0.0, initial_n=0.0):
-        if not 3 <= len(sides) <= 20:
-            raise TraverseError("Number of sides must be from 3 to 20.")
-        initial_e = number(initial_e, "Initial Easting")
-        initial_n = number(initial_n, "Initial Northing")
-        for i, side in enumerate(sides, 1):
-            if side.length is not None and (not math.isfinite(side.length) or side.length <= 0):
-                raise TraverseError(f"Side {i}: length must be a positive finite number.")
-            if side.azimuth is not None and (not math.isfinite(side.azimuth) or not 0 <= side.azimuth < 360):
-                raise TraverseError(f"Side {i}: azimuth must be normalized to [0°, 360°).")
-        case = detect_case(sides)
-        known = [vector(s) for s in sides if s.length is not None and s.azimuth is not None]
-        known_e = math.fsum(v[0] for v in known)
-        known_n = math.fsum(v[1] for v in known)
-        target_e, target_n = -known_e, -known_n
-        scale = max(math.fsum(s.length or 0 for s in sides), 1e-100)
-        tolerance = max(scale * 1e-10, 1e-110)
-        details = [CASES[case], "", "Azimuth is clockwise from North.",
-                   "ΔE = L sin(θ); ΔN = L cos(θ)",
-                   f"Fully known sides: ΣΔE = {known_e:.12g}; ΣΔN = {known_n:.12g}",
-                   f"Unknown-side vectors must sum to E = {target_e:.12g}, N = {target_n:.12g}.",
-                   "Closure equations: ΣΔE = 0; ΣΔN = 0.", ""]
-        length_ids = [i for i, s in enumerate(sides) if s.length is None]
-        bearing_ids = [i for i, s in enumerate(sides) if s.azimuth is None]
-        candidates = []
-        if case == 0:
-            i = length_ids[0]
-            length = math.hypot(target_e, target_n)
-            if length <= tolerance:
-                raise TraverseError("The omitted side has zero length; its bearing is indeterminate.")
-            candidate = list(sides)
-            candidate[i] = TraverseSide(length, azimuth(target_e, target_n))
-            candidates.append(candidate)
-            details += [f"Side {i + 1}: L = √(({target_e:.12g})² + ({target_n:.12g})²)",
-                        f"θ = atan2({target_e:.12g}, {target_n:.12g}) mod 360°."]
-        elif case == 1:
-            i, j = length_ids[0], bearing_ids[0]
-            ue, un = unit_vector(sides[i].azimuth)
-            radius = sides[j].length
-            # Intersect a ray x*u with the circle |target - x*u| = radius.
-            projection = target_e * ue + target_n * un
-            perpendicular = target_e * un - target_n * ue
-            normalized_disc = (radius / scale) ** 2 - (perpendicular / scale) ** 2
-            details += [f"Side {i + 1} unknown length x; side {j + 1} unknown bearing φ.",
-                        f"{ue:.12g} x + {radius:.12g} sin(φ) = {target_e:.12g}",
-                        f"{un:.12g} x + {radius:.12g} cos(φ) = {target_n:.12g}",
-                        f"Eliminate φ: x² - 2({projection:.12g})x + "
-                        f"({math.hypot(target_e, target_n):.12g})² - ({radius:.12g})² = 0.",
-                        "Intersect the positive-length ray with the known-length circle; retain all positive roots."]
-            if normalized_disc < -1e-12:
-                raise TraverseError("No solution: the bearing-unknown side cannot reach the known-bearing ray.")
-            if abs(normalized_disc) <= 32 * math.ulp(max((radius / scale) ** 2, (perpendicular / scale) ** 2)):
-                normalized_disc = 0.0
-            root = scale * math.sqrt(max(0, normalized_disc))
-            for length in (projection + root, projection - root):
-                if length <= tolerance:
-                    continue
-                candidate = list(sides)
-                candidate[i] = replace(sides[i], length=length)
-                candidate[j] = replace(sides[j], azimuth=azimuth(target_e - length * ue, target_n - length * un))
-                candidates.append(candidate)
-        elif case == 2:
-            i, j = length_ids
-            ae, an = unit_vector(sides[i].azimuth)
-            be, bn = unit_vector(sides[j].azimuth)
-            determinant = ae * bn - be * an
-            details += [f"{ae:.12g} L{i + 1} + {be:.12g} L{j + 1} = {target_e:.12g}",
-                        f"{an:.12g} L{i + 1} + {bn:.12g} L{j + 1} = {target_n:.12g}",
-                        f"2 × 2 determinant = {determinant:.12g}; solve using Cramer's rule."]
-            if abs(determinant) < 1e-10:
-                raise TraverseError("Singular or ill-conditioned system: the two known bearings are parallel "
-                                    "or nearly parallel. Missing lengths cannot be determined reliably.")
-            first = (target_e * bn - be * target_n) / determinant
-            second = (ae * target_n - target_e * an) / determinant
-            if min(first, second) <= tolerance:
-                raise TraverseError("No physical solution: closure requires a zero or negative side length.")
-            candidate = list(sides)
-            candidate[i] = replace(sides[i], length=first)
-            candidate[j] = replace(sides[j], length=second)
-            candidates.append(candidate)
-        else:
-            i, j = bearing_ids
-            a, b = sides[i].length, sides[j].length
-            distance = math.hypot(target_e, target_n)
-            details += [f"{a:.12g} sin(θ{i + 1}) + {b:.12g} sin(θ{j + 1}) = {target_e:.12g}",
-                        f"{a:.12g} cos(θ{i + 1}) + {b:.12g} cos(θ{j + 1}) = {target_n:.12g}",
-                        "Use exact circle-circle intersection to enumerate both mirror solutions.",
-                        "This geometric method needs no initial guesses and cannot miss an isolated root.",
-                        "Let R = |target|, x = (R² + a² - b²)/(2R), h = √(a² - x²).",
-                        "First side vector = x·unit(target) ± h·perpendicular(unit(target)).",
-                        "Second side vector = target − first; θ = atan2(E, N) mod 360°."]
-            if distance <= tolerance:
-                if abs(a - b) <= tolerance:
-                    raise TraverseError("Infinitely many solutions: equal opposite sides can rotate freely. "
-                                        "An additional bearing or engineering constraint is required.")
-                raise TraverseError("No solution: unequal side lengths cannot sum to a zero vector.")
-            if distance > a + b + tolerance or distance < abs(a - b) - tolerance:
-                raise TraverseError("No solution: the known lengths violate the triangle inequality.")
-            r, aa, bb = distance / scale, a / scale, b / scale
-            x = (r * r + aa * aa - bb * bb) / (2 * r)
-            height_sq = aa * aa - x * x
-            if height_sq < -1e-12:
-                raise TraverseError("No stable circle intersection exists for these inputs.")
-            if abs(height_sq) <= 32 * math.ulp(max(aa * aa, x * x)):
-                height_sq = 0.0
-            height = math.sqrt(max(0, height_sq)) * scale
-            x *= scale
-            ue, un = target_e / distance, target_n / distance
-            for sign in (1, -1):
-                east, north = x * ue - sign * height * un, x * un + sign * height * ue
-                candidate = list(sides)
-                candidate[i] = replace(sides[i], azimuth=azimuth(east, north))
-                candidate[j] = replace(sides[j], azimuth=azimuth(target_e - east, target_n - north))
-                candidates.append(candidate)
-        solutions = []
-        for candidate in candidates:
-            if any(self._same(candidate, old.sides) for old in solutions):
-                continue
-            solution = self._evaluate(candidate, initial_e, initial_n)
-            if solution.closure <= solution.tolerance:
-                solutions.append(solution)
-        if not solutions:
-            raise TraverseError("No valid positive-length solution satisfies closure within tolerance.")
-        details += ["", f"Verified {len(solutions)} distinct solution(s) by substitution into both closure equations."]
-        for index, solution in enumerate(solutions, 1):
-            details += [f"", f"Solution {index}:"]
-            for i, (original, solved) in enumerate(zip(sides, solution.sides), 1):
-                if original.length is None:
-                    details.append(f"Side {i} length = {solved.length:.12g}")
-                if original.azimuth is None:
-                    details.append(f"Side {i} bearing = {solved.azimuth:.12g}° = {quadrantal(solved.azimuth)}")
-            details.append(f"ΣΔE = {solution.sum_e:.12g}; ΣΔN = {solution.sum_n:.12g}; "
-                           f"closure error = {solution.closure:.12g}")
-        return case, solutions, "\n".join(details)
 
-    @staticmethod
-    def _same(first, second):
-        return all(math.isclose(a.length, b.length, rel_tol=1e-9, abs_tol=1e-110)
-                   and abs((a.azimuth - b.azimuth + 180) % 360 - 180) < 1e-7
-                   for a, b in zip(first, second))
+def solve_case_ii(sides, target, policy):
+    i = next(i for i, s in enumerate(sides) if s.length is None)
+    j = next(i for i, s in enumerate(sides) if s.azimuth is None)
+    east, north = target
+    ue, un = unit_vector(sides[i].azimuth)
+    projection, perpendicular = east * ue + north * un, east * un - north * ue
+    discriminant = sides[j].length**2 - perpendicular**2
+    if discriminant < -policy.squared_length:
+        raise TraverseError("No solution: the known length cannot reach the known-bearing ray.")
+    if abs(discriminant) <= policy.roundoff_squared:
+        discriminant = 0.0
+    root = math.sqrt(max(0, discriminant))
+    candidates = []
+    for length in (projection + root, projection - root):
+        if length <= policy.length:
+            continue
+        candidate = list(sides)
+        candidate[i] = replace(sides[i], length=length)
+        candidate[j] = replace(sides[j], azimuth=vector_azimuth(
+            east - length * ue, north - length * un))
+        candidates.append(candidate)
+    return candidates
 
-    @staticmethod
-    def _evaluate(sides, initial_e, initial_n):
-        components = [vector(s) for s in sides]
-        perimeter = math.fsum(s.length for s in sides)
-        tolerance = max(perimeter * 1e-9, 1e-110)
-        sum_e = math.fsum(e for e, _ in components)
-        sum_n = math.fsum(n for _, n in components)
-        # Compute local coordinates first; translate only for the displayed site coordinates.
-        local = [(0.0, 0.0)]
-        for i in range(len(sides)):
-            local.append((math.fsum(e for e, _ in components[:i + 1]),
-                          math.fsum(n for _, n in components[:i + 1])))
-        area, warnings = polygon_area(local, tolerance)
-        coordinates = [(initial_e + e, initial_n + n) for e, n in local]
-        if any(not math.isfinite(v) for point in coordinates for v in point):
-            raise TraverseError("Coordinates exceed the supported floating-point range.")
-        return Solution(sides, coordinates, components, perimeter, sum_e, sum_n,
-                        math.hypot(sum_e, sum_n), area, warnings, tolerance)
+
+def _length_system(sides):
+    i, j = [i for i, s in enumerate(sides) if s.length is None]
+    ae, an = unit_vector(sides[i].azimuth)
+    be, bn = unit_vector(sides[j].azimuth)
+    return i, j, ae, an, be, bn, ae * bn - be * an
+
+
+def solve_case_iii(sides, target, policy):
+    i, j, ae, an, be, bn, determinant = _length_system(sides)
+    if abs(determinant) <= policy.singular:
+        raise TraverseError("Singular system: the two bearings are parallel or opposite; "
+                            "the missing lengths cannot be uniquely determined.")
+    east, north = target
+    first = (east * bn - be * north) / determinant
+    second = (ae * north - east * an) / determinant
+    candidate = list(sides)
+    candidate[i], candidate[j] = replace(sides[i], length=first), replace(sides[j], length=second)
+    return [candidate]
+
+
+def solve_case_iv(sides, target, policy):
+    i, j = [i for i, s in enumerate(sides) if s.azimuth is None]
+    a, b, distance = sides[i].length, sides[j].length, math.hypot(*target)
+    if distance <= policy.length:
+        if abs(a - b) <= policy.length:
+            raise TraverseError("Infinitely many solutions: equal opposite sides can rotate "
+                                "freely; supply another bearing or engineering constraint.")
+        raise TraverseError("No solution: unequal lengths cannot sum to a zero vector.")
+    if distance > a + b + policy.length or distance < abs(a - b) - policy.length:
+        raise TraverseError("No solution: known lengths violate the triangle inequality.")
+    along = (distance**2 + a**2 - b**2) / (2 * distance)
+    height_sq = a**2 - along**2
+    if height_sq < -policy.squared_length:
+        raise TraverseError("No stable circle intersection exists for these inputs.")
+    if abs(height_sq) <= policy.roundoff_squared:
+        height_sq = 0.0
+    height, ue, un = math.sqrt(max(0, height_sq)), target[0] / distance, target[1] / distance
+    candidates = []
+    for sign in (1, -1):
+        east, north = along * ue - sign * height * un, along * un + sign * height * ue
+        candidate = list(sides)
+        candidate[i] = replace(sides[i], azimuth=vector_azimuth(east, north))
+        candidate[j] = replace(sides[j], azimuth=vector_azimuth(
+            target[0] - east, target[1] - north))
+        candidates.append(candidate)
+    return candidates
+
+
+def evaluate_solution(sides, initial_e, initial_n):
+    components = [vector(side) for side in sides]
+    perimeter = math.fsum(side.length for side in sides)
+    policy = NumericalPolicy(perimeter)
+    local = [(0.0, 0.0)] + [(math.fsum(e for e, _ in components[:i]),
+                              math.fsum(n for _, n in components[:i]))
+                             for i in range(1, len(sides) + 1)]
+    coordinates = [(initial_e + e, initial_n + n) for e, n in local]
+    if any(not math.isfinite(value) for point in coordinates for value in point):
+        raise TraverseError("Coordinates exceed the supported floating-point range.")
+    area = polygon_area(local, policy)
+    warnings = [] if area is not None else [
+        "Crossed or degenerate boundary: sides intersect, touch, or retrace; area unavailable."]
+    sum_e, sum_n = local[-1]
+    return Solution(sides, components, local, coordinates, perimeter, sum_e, sum_n,
+                    math.hypot(sum_e, sum_n), area, warnings, policy.length)
+
+
+def explain_result(sides, case, target, solutions, condition_number=None):
+    east, north = target
+    lines = [CASES[case], "Azimuth is clockwise from North.",
+             "ΔE = L sin(θ); ΔN = L cos(θ); ΣΔE = 0; ΣΔN = 0.",
+             f"Unknown vectors must sum to E={east:.12g}, N={north:.12g}."]
+    length_ids = [i for i, side in enumerate(sides) if side.length is None]
+    bearing_ids = [i for i, side in enumerate(sides) if side.azimuth is None]
+    if case == 0:
+        lines += ["L = hypot(E, N); θ = atan2(E, N) modulo 360°."]
+    elif case == 1:
+        i, j = length_ids[0], bearing_ids[0]
+        ue, un = unit_vector(sides[i].azimuth)
+        radius = sides[j].length
+        projection = east * ue + north * un
+        lines += [f"{ue:.12g}x + {radius:.12g}sin(φ) = {east:.12g}",
+                  f"{un:.12g}x + {radius:.12g}cos(φ) = {north:.12g}",
+                  f"x² - 2({projection:.12g})x + {east**2 + north**2 - radius**2:.12g} = 0.",
+                  "Retain every positive root; recover φ from the remaining vector."]
+    elif case == 2:
+        i, j, ae, an, be, bn, determinant = _length_system(sides)
+        lines += [f"{ae:.12g}L{i+1} + {be:.12g}L{j+1} = {east:.12g}",
+                  f"{an:.12g}L{i+1} + {bn:.12g}L{j+1} = {north:.12g}",
+                  f"Determinant = {determinant:.12g}; solve by Cramer's rule.",
+                  f"2-norm condition number = {condition_number:.6g}."]
+    else:
+        i, j = bearing_ids
+        lines += [f"{sides[i].length:.12g}sin(θ{i+1}) + "
+                  f"{sides[j].length:.12g}sin(θ{j+1}) = {east:.12g}",
+                  f"{sides[i].length:.12g}cos(θ{i+1}) + "
+                  f"{sides[j].length:.12g}cos(θ{j+1}) = {north:.12g}",
+                  "R = hypot(E,N); x = (R²+a²-b²)/(2R); h = sqrt(a²-x²).",
+                  "First vector = x·unit(target) ± h·perpendicular(unit(target));",
+                  "second vector = target − first. Convert both using atan2(E,N)."]
+    for index, solution in enumerate(solutions, 1):
+        lines += ["", f"Solution {index}: {solution.geometry_label}"]
+        for i, (original, solved) in enumerate(zip(sides, solution.sides), 1):
+            if original.length is None:
+                lines.append(f"Side {i} length = {solved.length:.12g}")
+            if original.azimuth is None:
+                lines.append(f"Side {i} bearing = {solved.azimuth:.12g}° "
+                             f"({quadrantal(solved.azimuth)})")
+        lines += [f"Substitution residual: ΣΔE={solution.sum_e:.12g}; "
+                  f"ΣΔN={solution.sum_n:.12g}; norm={solution.closure:.12g}.", *solution.warnings]
+    lines += ["", "Closure is imposed by solving the equations. The residual checks numerical "
+              "substitution only; it does not assess measurement quality."]
+    return "\n".join(lines)
+
+
+def solve_traverse(sides, initial_e=0.0, initial_n=0.0):
+    if not 3 <= len(sides) <= 20:
+        raise TraverseError("Number of sides must be from 3 to 20.")
+    initial_e = number(initial_e, "Initial Easting")
+    initial_n = number(initial_n, "Initial Northing")
+    for index, side in enumerate(sides, 1):
+        if side.length is not None and (not math.isfinite(side.length) or side.length <= 0):
+            raise TraverseError(f"Side {index}: length must be a positive finite number.")
+        if side.azimuth is not None and (not math.isfinite(side.azimuth)
+                                         or not 0 <= side.azimuth < 360):
+            raise TraverseError(f"Side {index}: azimuth must be normalized to [0°, 360°).")
+    case = detect_case(sides)
+    known = [vector(s) for s in sides if s.length is not None and s.azimuth is not None]
+    target = -math.fsum(e for e, _ in known), -math.fsum(n for _, n in known)
+    policy = NumericalPolicy(math.fsum(s.length or 0 for s in sides))
+    candidates = (solve_case_i, solve_case_ii, solve_case_iii, solve_case_iv)[case](
+        sides, target, policy)
+    solutions, condition_number = [], None
+    if case == 2:
+        _, _, ae, an, be, bn, determinant = _length_system(sides)
+        condition_number = (1 + abs(ae * be + an * bn)) / abs(determinant)
+    for candidate in candidates:
+        if any(s.length <= policy.length for s in candidate):
+            continue
+        solution = evaluate_solution(candidate, initial_e, initial_n)
+        duplicate = any(all(math.hypot(a[0] - b[0], a[1] - b[1]) <= solution.tolerance
+                            for a, b in zip(solution.components, old.components))
+                        for old in solutions)
+        if solution.closure <= solution.tolerance and not duplicate:
+            if case == 2 and abs(determinant) < policy.conditioning_warning:
+                solution.warnings.append("Ill-conditioned bearings: small input changes can "
+                                         "greatly change lengths "
+                                         f"(condition number {condition_number:.6g}).")
+            solutions.append(solution)
+    if not solutions:
+        raise TraverseError("Closure requires a zero or negative solved length, or inconsistent "
+                            "inputs. Check for a reversed bearing (180°), the bearing quadrant, "
+                            "side order, and entered lengths.")
+    solutions.sort(key=lambda solution: solution.area is None)
+    return SolveResult(case, solutions, explain_result(sides, case, target, solutions,
+                                                      condition_number), condition_number)
 
 
 def example(case):
-    """80 × 100 rectangle, with the required values genuinely omitted."""
     sides = [TraverseSide(80, 0), TraverseSide(100, 90),
              TraverseSide(80, 180), TraverseSide(100, 270)]
-    if case == 0:
-        sides[3] = TraverseSide(None, None)
-    elif case == 1:
-        sides[0] = replace(sides[0], length=None)
-        sides[2] = replace(sides[2], azimuth=None)
-    elif case == 2:
-        sides[0] = replace(sides[0], length=None)
-        sides[1] = replace(sides[1], length=None)
-    else:
-        sides[0] = replace(sides[0], azimuth=None)
-        sides[1] = replace(sides[1], azimuth=None)
-    return sides
+    omissions = (([3], [3]), ([0], [2]), ([0, 1], []), ([], [0, 1]))
+    lengths, bearings = omissions[case]
+    return [TraverseSide(None if i in lengths else s.length,
+                         None if i in bearings else s.azimuth) for i, s in enumerate(sides)]
 
 
-TABLE_HEADERS = ("Side", "Length", "Bearing", "Azimuth (°)", "ΔN / Latitude", "ΔE / Departure",
-                 "Start Northing", "Start Easting", "End Northing", "End Easting")
+# ---------------------- Input model and report files ----------------------
+
+@dataclass
+class DraftSide:
+    length: str = ""
+    bearing: str = ""
+    length_unknown: bool = False
+    bearing_unknown: bool = False
+
+
+@dataclass
+class InputModel:
+    rows: list[DraftSide]
+    initial_e: str = "0"
+    initial_n: str = "0"
+    unit: str = "m"
+
+    def sides(self):
+        sides = []
+        for i, row in enumerate(self.rows, 1):
+            try:
+                length = None if row.length_unknown else number(row.length, "Length")
+                bearing = None if row.bearing_unknown else parse_bearing(row.bearing)
+                sides.append(TraverseSide(length, bearing))
+            except TraverseError as error:
+                raise TraverseError(f"Side {i}: {error}") from None
+        return sides
+
+    def case(self):
+        return case_from_unknowns(
+            [i for i, row in enumerate(self.rows) if row.length_unknown],
+            [i for i, row in enumerate(self.rows) if row.bearing_unknown])
+
+    def resize(self, count):
+        if type(count) is not int or not 3 <= count <= 20:
+            raise TraverseError("Number of sides must be an integer from 3 to 20.")
+        self.rows = (self.rows + [DraftSide() for _ in range(count)])[:count]
+
+    @classmethod
+    def from_example(cls, case):
+        return cls([DraftSide("" if s.length is None else str(s.length),
+                              "" if s.azimuth is None else str(s.azimuth),
+                              s.length is None, s.azimuth is None) for s in example(case)])
+
+    def save(self, path):
+        data = {"version": 1, "rows": [asdict(row) for row in self.rows],
+                "initial_e": self.initial_e, "initial_n": self.initial_n, "unit": self.unit}
+        Path(path).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    @classmethod
+    def load(cls, path):
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        valid = isinstance(data, dict) and type(data.get("version")) is int
+        if not valid or data["version"] != 1:
+            raise TraverseError("This is not a supported traverse input file (version 1).")
+        rows = data.get("rows")
+        if not isinstance(rows, list) or not 3 <= len(rows) <= 20:
+            raise TraverseError("Input file must contain 3–20 rows.")
+        fields = {"length": str, "bearing": str,
+                  "length_unknown": bool, "bearing_unknown": bool}
+        for row in rows:
+            if not isinstance(row, dict) or set(row) != set(fields):
+                raise TraverseError("Invalid side fields in input file.")
+            if any(type(row[key]) is not kind for key, kind in fields.items()):
+                raise TraverseError("Side values must be text and unknown flags must be booleans.")
+        if data.get("unit") not in ("m", "ft") or any(
+                not isinstance(data.get(key), str) for key in ("initial_e", "initial_n")):
+            raise TraverseError("Invalid units or starting coordinates in input file.")
+        return cls([DraftSide(**row) for row in rows], data["initial_e"],
+                   data["initial_n"], data["unit"])
 
 
 def calculation_rows(solution):
@@ -400,902 +502,490 @@ def calculation_rows(solution):
                north, east, start_n, start_e, end_n, end_e)
 
 
-def report_rows(inputs, case, solutions, details, unit, selected=0):
-    """One shared report model keeps TXT and CSV equally complete."""
-    yield ["ENGINEERING TRAVERSE SOLVER", "Engineering 1035"]
-    yield ["Detected Case", CASES[case]]
-    yield ["Distance unit", unit, "Area unit", unit + "²"]
-    yield ["Selected solution", selected + 1]
-    yield ["Input Data"]
-    yield ["Side", "Length", "Azimuth (°)"]
-    for i, side in enumerate(inputs, 1):
-        yield [i, "Unknown" if side.length is None else side.length,
-               "Unknown" if side.azimuth is None else side.azimuth]
-    for index, solution in enumerate(solutions, 1):
-        yield []
-        yield ["Solution", index]
-        yield ["Solved Unknowns"]
-        for i, (original, solved) in enumerate(zip(inputs, solution.sides), 1):
-            if original.length is None:
-                yield [f"Side {i} Length", solved.length, unit]
-            if original.azimuth is None:
-                yield [f"Side {i} Bearing", solved.azimuth, quadrantal(solved.azimuth)]
-        yield ["Traverse Calculations"]
-        yield list(TABLE_HEADERS)
-        yield from calculation_rows(solution)
-        yield ["Coordinates"]
-        yield ["Point", "Northing", "Easting"]
-        for i, (east, north) in enumerate(solution.coordinates, 1):
-            yield [f"P{i}" if i <= len(inputs) else "Return to P1", north, east]
-        yield ["Perimeter", solution.perimeter, unit]
-        yield ["Area", solution.area if solution.area is not None else "Unavailable", unit + "²"]
-        yield ["ΣΔN / Northing misclosure", solution.sum_n, unit]
-        yield ["ΣΔE / Easting misclosure", solution.sum_e, unit]
-        yield ["Closure Error", solution.closure, unit]
-        yield ["Relative Precision", solution.precision]
-        for warning in solution.warnings:
-            yield ["Warning", warning]
-    yield []
-    yield ["CALCULATION DETAILS"]
-    for line in details.splitlines():
-        yield [line]
-    yield ["Note", "Closure is imposed by the solver; numerical closure is not a measurement accuracy assessment."]
-    if len(solutions) > 1:
-        yield ["Ambiguity", "Additional engineering constraints are needed to select a solution."]
+TABLE_HEADERS = ("Side", "Length", "Bearing", "Azimuth", "ΔN", "ΔE",
+                 "Start N", "Start E", "End N", "End E")
 
 
-def export_report(path, inputs, case, solutions, details, unit, selected=0):
-    rows = report_rows(inputs, case, solutions, details, unit, selected)
-    with open(path, "w", encoding="utf-8-sig" if str(path).lower().endswith(".csv") else "utf-8", newline="") as stream:
-        if str(path).lower().endswith(".csv"):
-            csv.writer(stream).writerows(rows)
-        else:
-            for row in rows:
-                stream.write("\t".join(str(value) for value in row) + "\n")
+def solution_summary(model, result, selected):
+    solution = result.solutions[selected]
+    unit = model.unit
+    lines = [CASES[result.case], f"Solution {selected + 1}: {solution.geometry_label}",
+             "", "SOLVED VALUES"]
+    for i, (row, side) in enumerate(zip(model.rows, solution.sides), 1):
+        if row.length_unknown:
+            lines.append(f"Side {i} length: {side.length:.4f} {unit}")
+        if row.bearing_unknown:
+            lines.append(f"Side {i} bearing: {display_azimuth(side.azimuth)}° / "
+                         f"{quadrantal(side.azimuth)}")
+    area = f"{solution.area:,.4f} {unit}²" if solution.area is not None else "Unavailable"
+    lines += ["", f"Perimeter: {solution.perimeter:,.4f} {unit}", f"Area: {area}"]
+    lines += ["", *[f"WARNING: {warning}" for warning in solution.warnings]]
+    if len(result.solutions) > 1:
+        lines += ["Multiple equation solutions exist. Review geometry and engineering constraints."]
+    lines += ["", "Numerical residuals are in Calculation Details.",
+              "Closure is imposed; it does not measure survey accuracy."]
+    return "\n".join(lines)
 
 
-@dataclass
-class PlotData:
-    points: dict[int, tuple[float, float]]
-    edges: list[tuple[int, int, str]]  # start, end, known/solved/unknown
-    title: str
-    note: str
-    side_count: int
+def export_report(path, model, result, selected=0):
+    csv_output = str(path).lower().endswith(".csv")
+    with open(path, "w", encoding="utf-8-sig" if csv_output else "utf-8", newline="") as stream:
+        writer = csv.writer(stream) if csv_output else None
+
+        def section(title, headers, rows):
+            rows = [[str(value) for value in row] for row in rows]
+            if writer:
+                writer.writerow([title])
+                writer.writerow(headers)
+                writer.writerows(rows)
+                writer.writerow([])
+            else:
+                stream.write(title + "\n" + "=" * len(title) + "\n")
+                if headers:
+                    widths = [max(len(row[i]) for row in [list(headers)] + rows)
+                              for i in range(len(headers))]
+                    for row in [list(headers)] + rows:
+                        stream.write("  ".join(v.ljust(w) for v, w in zip(row, widths)) + "\n")
+                else:
+                    stream.write("\n".join(row[0] for row in rows) + "\n")
+                stream.write("\n")
+
+        section("ENGINEERING TRAVERSE SOLVER", (), [[CASES[result.case]],
+                [f"Units: {model.unit}; selected solution: {selected + 1}"]])
+        section("INPUT DATA", ("Side", "Length", "Bearing"),
+                [[i, "Unknown" if r.length_unknown else r.length,
+                  "Unknown" if r.bearing_unknown else r.bearing]
+                 for i, r in enumerate(model.rows, 1)])
+        for index, solution in enumerate(result.solutions):
+            section(f"SOLUTION {index + 1}", (),
+                    [[line] for line in solution_summary(model, result, index).splitlines()])
+            section("TRAVERSE CALCULATIONS", TABLE_HEADERS,
+                    [[f"{v:.8f}" if isinstance(v, float) else v for v in row]
+                     for row in calculation_rows(solution)])
+            section("COORDINATES", ("Point", "Northing", "Easting"),
+                    [[f"P{i + 1}" if i < len(solution.sides) else "Return to P1",
+                      f"{n:.8f}", f"{e:.8f}"]
+                     for i, (e, n) in enumerate(solution.coordinates)])
+        section("CALCULATION DETAILS", (), [[line] for line in result.details.splitlines()])
 
 
-def build_plot_data(sides, initial_e=0.0, initial_n=0.0, solution=None, solution_index=0):
-    """Locate only justified stations; missing spans are guides, never invented sides."""
-    count = len(sides)
-    if solution is not None:
-        points = dict(enumerate(solution.coordinates))
-        edges = [(i, i + 1, "solved" if sides[i].length is None or sides[i].azimuth is None
-                  else "known") for i in range(count)]
-        return PlotData(points, edges, f"Solved Closed Traverse · Solution {solution_index + 1}",
-                        "Blue: known   Red: solved   Orange marker: start" +
-                        ("\nWarning: " + " ".join(solution.warnings) if solution.warnings else ""), count)
-    points = {0: (initial_e, initial_n)}
-    complete = lambda s: s.length is not None and s.azimuth is not None
-    for i, side in enumerate(sides):
-        if not complete(side):
-            break
-        east, north = vector(side)
-        points[i + 1] = (points[i][0] + east, points[i][1] + north)
-    omitted = any(not complete(s) for s in sides)
-    if omitted:
-        # The backward chain is anchored at the assumed closed endpoint.
-        points[count] = (initial_e, initial_n)
-        for i in range(count - 1, -1, -1):
-            if not complete(sides[i]):
-                break
-            east, north = vector(sides[i])
-            points[i] = (points[i + 1][0] - east, points[i + 1][1] - north)
-    if any(not math.isfinite(value) for point in points.values() for value in point):
-        raise TraverseError("Preview coordinates exceed the supported floating-point range.")
-    edges = []
-    ordered = sorted(points)
-    for first, second in zip(ordered, ordered[1:]):
-        kind = "known" if second == first + 1 and complete(sides[first]) else "unknown"
-        edges.append((first, second, kind))
-    hidden = sum(complete(s) and (i not in points or i + 1 not in points)
-                 for i, s in enumerate(sides))
-    note = ("Unsolved preview · dashed amber spans assume closure; they are not solved geometry."
-            if omitted else "Known input geometry · closure has not been imposed.")
-    if hidden:
-        note += f"\n{hidden} known side(s) lie between omissions and cannot yet be positioned."
-    return PlotData(points, edges, "Traverse Preview" + (" (unsolved)" if omitted else ""), note, count)
+# -------------------------- Desktop views -------------------------------
+
+try:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox, ttk
+except ImportError:
+    tk = None
 
 
-class TraversePlot:
-    """Reusable embedded/pop-out plot, with Matplotlib and standard-library renderers."""
-    COLORS = {"known": "#2563eb", "solved": "#e11d48", "unknown": "#d18b09"}
+def screen_geometry(width, height):
+    """Leave room for desktop panels and window decorations, including on 1366×768."""
+    return min(1200, max(320, width - 60)), min(820, max(240, height - 110))
 
+
+class PlotView:
+    """One plotting backend. An unavailable/broken Matplotlib cannot stop the solver."""
     def __init__(self, parent):
-        import tkinter as tk
-        from tkinter import ttk
-        self.data = None
-        self.unit = "m"
-        self.figure = None
-        self.note = ttk.Label(parent, wraplength=440, padding=(8, 5), justify="left")
-        self.note.pack(side="bottom", fill="x")
+        self.figure = self.canvas = self.axes = None
+        frame = ttk.Frame(parent)
+        frame.pack(fill="both", expand=True)
+        self.message = ttk.Label(frame, wraplength=350, padding=8)
+        self.message.pack(side="bottom", fill="x")
         try:
             from matplotlib.figure import Figure
             from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-        except ImportError:
-            self.canvas = tk.Canvas(parent, bg="#f0f9ff", width=440, height=300, highlightthickness=0)
-            self.canvas.pack(fill="both", expand=True)
-            self.canvas.bind("<Configure>", lambda _: self.redraw())
-        else:
-            self.figure = Figure(figsize=(4.4, 3.2), dpi=100, layout="constrained")
-            self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
-            toolbar = NavigationToolbar2Tk(self.canvas, parent, pack_toolbar=False)
+            # Avoid layout= so releases before Matplotlib 3.5 remain compatible.
+            self.figure = Figure(figsize=(4, 2.5), dpi=100, tight_layout=True)
+            self.axes = self.figure.add_subplot(111)
+            self.canvas = FigureCanvasTkAgg(self.figure, master=frame)
+            toolbar = NavigationToolbar2Tk(self.canvas, frame, pack_toolbar=False)
             toolbar.pack(side="bottom", fill="x")
             self.canvas.get_tk_widget().pack(fill="both", expand=True)
-        self.render(None, "m")
+        except Exception as error:
+            for widget in frame.winfo_children():
+                if widget is not self.message:
+                    widget.destroy()
+            self.figure = self.canvas = self.axes = None
+            self.message.configure(text=f"Plot unavailable ({type(error).__name__}). "
+                                   "Install or update: python -m pip install -U matplotlib. "
+                                   "Numerical solving and export remain available.")
+        self.render(None, None, 0)
 
-    def render(self, data, unit, message="Enter known values to preview the traverse."):
-        self.data, self.unit = data, unit
-        note = data.note if data else message
-        if self.figure is None:
-            note += "\nBuilt-in plot · install Matplotlib for zoom and image saving."
-        self.note.configure(text=note)
-        self.redraw()
-
-    def redraw(self):
-        data = self.data
-        if self.figure is not None:
-            self.figure.clear()
-            axes = self.figure.add_subplot(111)
-            axes.set_facecolor("#f0f9ff")
-            if data:
-                for first, second, kind in data.edges:
-                    a, b = data.points[first], data.points[second]
-                    color = self.COLORS[kind]
-                    axes.plot([a[0], b[0]], [a[1], b[1]], "--" if kind == "unknown" else "-",
-                              linewidth=2, color=color)
-                    if kind != "unknown":
-                        axes.annotate("", xy=b, xytext=a, arrowprops={"arrowstyle": "->", "color": color})
-                    else:
-                        axes.annotate("Unknown span", ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2),
-                                      xytext=(5, 5), textcoords="offset points", fontsize=8, color=color)
-                for i, (east, north) in data.points.items():
-                    # The closed endpoint is already labeled P1 at the start.
-                    if i == data.side_count and math.dist((east, north), data.points[0]) <= 1e-8:
-                        continue
-                    axes.plot(east, north, "o", color="#d35e35" if i == 0 else "#18314b", markersize=6)
-                    axes.annotate(f"P{i + 1}" if i < data.side_count else "Return", (east, north),
-                                  xytext=(6, 6), textcoords="offset points", fontsize=9)
-            axes.set_title(data.title if data else "Traverse Plot", fontsize=10)
-            axes.set(xlabel=f"Easting / Departure ({self.unit})",
-                     ylabel=f"Northing / Latitude ({self.unit})")
-            axes.set_aspect("equal", adjustable="datalim")
-            axes.grid(True, linestyle="--", alpha=0.3)
-            axes.margins(0.18)
-            self.canvas.draw()
+    def render(self, model, result, selected):
+        if self.axes is None:
             return
-        canvas = self.canvas
-        canvas.delete("all")
-        width, height = max(canvas.winfo_width(), 240), max(canvas.winfo_height(), 200)
-        for x in range(35, width, 35):
-            canvas.create_line(x, 35, x, height - 35, fill="#dbe8f4")
-        for y in range(35, height, 35):
-            canvas.create_line(35, y, width - 35, y, fill="#dbe8f4")
-        canvas.create_text(width / 2, 18, text=data.title if data else "Traverse Plot")
-        if not data:
-            canvas.create_text(width / 2, height / 2, text="Enter known values to preview.")
+        axes = self.axes
+        axes.clear()
+        if result:
+            solution = result.solutions[selected]
+            # Plot local coordinates; global offsets must not obscure small residuals.
+            for i, (a, b) in enumerate(zip(solution.local_coordinates,
+                                         solution.local_coordinates[1:])):
+                row = model.rows[i]
+                color = "#e11d48" if row.length_unknown or row.bearing_unknown else "#2563eb"
+                axes.plot([a[0], b[0]], [a[1], b[1]], "o-", color=color, linewidth=2)
+                axes.annotate("", xy=b, xytext=a, arrowprops={"arrowstyle": "->", "color": color})
+                axes.annotate(f"P{i + 1}", a, xytext=(5, 5), textcoords="offset points")
+            axes.plot(0, 0, "o", color="#d18b09", markersize=8)
+            axes.set_xlabel(f"Local Easting ({model.unit})")
+            axes.set_ylabel(f"Local Northing ({model.unit})")
+            axes.set_title(f"Solution {selected + 1}: {solution.geometry_label}", fontsize=10)
+            self.message.configure(text="Blue: known · Red: solved · Orange: P1\n"
+                                   f"Origin E={model.initial_e}, N={model.initial_n}")
+        else:
+            axes.set_title("Solve a traverse to plot its geometry", fontsize=10)
+            self.message.configure(text="Plotting uses solved geometry only.")
+        axes.set_aspect("equal", adjustable="datalim")
+        axes.grid(True, alpha=0.3)
+        self.canvas.draw_idle()
+
+
+class InputTable:
+    def __init__(self, parent, model, on_change):
+        self.frame = ttk.Frame(parent)
+        self.model, self.on_change, self.variables = model, on_change, []
+        self.canvas = tk.Canvas(self.frame, height=180, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.frame, command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.body = ttk.Frame(self.canvas, padding=5)
+        window = self.canvas.create_window((0, 0), window=self.body, anchor="nw")
+        self.body.bind("<Configure>", lambda _: self.canvas.configure(
+            scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", lambda e: self.canvas.itemconfigure(window, width=e.width))
+        for event in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            parent.winfo_toplevel().bind(event, self.scroll, add="+")
+        self.rebuild()
+
+    def rebuild(self):
+        for widget in self.body.winfo_children():
+            widget.destroy()
+        self.variables = []
+        headers = ("Side", "Length", "Unknown length", "Bearing / Azimuth", "Unknown bearing")
+        for column, text in enumerate(headers):
+            ttk.Label(self.body, text=text).grid(row=0, column=column, padx=8, sticky="w")
+        self.body.columnconfigure(3, weight=1)
+        for i, row in enumerate(self.model.rows):
+            values = [tk.StringVar(value=row.length), tk.BooleanVar(value=row.length_unknown),
+                      tk.StringVar(value=row.bearing), tk.BooleanVar(value=row.bearing_unknown)]
+            ttk.Label(self.body, text=str(i + 1)).grid(row=i + 1, column=0, padx=8)
+            widgets = []
+            for column, variable in enumerate(values, 1):
+                command = lambda i=i: self.commit(i)
+                if column in (2, 4):
+                    widget = ttk.Checkbutton(self.body, variable=variable, command=command)
+                else:
+                    widget = ttk.Entry(self.body, textvariable=variable, width=20)
+                    widget.bind("<KeyRelease>", lambda _, i=i: self.commit(i))
+                    widget.bind("<FocusOut>", lambda _, i=i: self.commit(i))
+                widget.grid(row=i + 1, column=column, sticky="ew", padx=8, pady=3)
+                widgets.append(widget)
+            self.variables.append((values, widgets))
+            self.set_states(i)
+
+    def set_states(self, index):
+        values, widgets = self.variables[index]
+        widgets[0].configure(state="disabled" if values[1].get() else "normal")
+        widgets[2].configure(state="disabled" if values[3].get() else "normal")
+
+    def commit(self, index):
+        if index >= len(self.model.rows):
             return
-        points = list(data.points.values())
-        min_e, max_e = min(e for e, _ in points), max(e for e, _ in points)
-        min_n, max_n = min(n for _, n in points), max(n for _, n in points)
-        scale = min((width - 100) / max(max_e - min_e, 1e-100),
-                    (height - 100) / max(max_n - min_n, 1e-100))
-        center_e, center_n = (min_e + max_e) / 2, (min_n + max_n) / 2
-        mapped = {i: (width / 2 + (e - center_e) * scale, height / 2 - (n - center_n) * scale)
-                  for i, (e, n) in data.points.items()}
-        for first, second, kind in data.edges:
-            canvas.create_line(*mapped[first], *mapped[second], fill=self.COLORS[kind], width=2,
-                               dash=(6, 4) if kind == "unknown" else (),
-                               arrow="none" if kind == "unknown" else "last", tags=(kind,))
-        for i, (x, y) in mapped.items():
-            if i == data.side_count and math.dist(data.points[i], data.points[0]) <= 1e-8:
-                continue
-            canvas.create_oval(x - 4, y - 4, x + 4, y + 4, fill="#d35e35" if i == 0 else "#18314b")
-            canvas.create_text(x + 12, y - 12, text=f"P{i + 1}" if i < data.side_count else "Return")
-        canvas.create_text(width / 2, height - 16, text=f"E → / N ↑ ({self.unit}) · Equal scale")
+        values, _ = self.variables[index]
+        row = DraftSide(values[0].get(), values[2].get(), values[1].get(), values[3].get())
+        if row != self.model.rows[index]:
+            self.model.rows[index] = row
+            self.set_states(index)
+            self.on_change(data_changed=True)
+
+    def scroll(self, event):
+        x, y = event.x_root - self.canvas.winfo_rootx(), event.y_root - self.canvas.winfo_rooty()
+        if 0 <= x < self.canvas.winfo_width() and 0 <= y < self.canvas.winfo_height():
+            steps = -1 if getattr(event, "num", None) == 4 else 1
+            if getattr(event, "delta", 0):
+                steps = -max(1, abs(event.delta) // 120) if event.delta > 0 else max(
+                    1, abs(event.delta) // 120)
+            self.canvas.yview_scroll(steps, "units")
+            return "break"
 
 
-# Tk imports are deferred so the mathematical tests run on headless machines.
+def text_panel(parent):
+    frame = ttk.Frame(parent)
+    text = tk.Text(frame, wrap="word", height=6, width=40, padx=10, pady=8, state="disabled")
+    scrollbar = ttk.Scrollbar(frame, command=text.yview)
+    text.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+    text.pack(fill="both", expand=True)
+    return frame, text
+
+
+def set_text(widget, content):
+    widget.configure(state="normal")
+    widget.delete("1.0", "end")
+    widget.insert("1.0", content)
+    widget.configure(state="disabled")
+
+
 class TraverseApp:
     def __init__(self, root):
-        import tkinter as tk
-        from tkinter import ttk, font
-        families = {name.lower(): name for name in font.families(root)}
-        self.ui_font = next((families[name.lower()] for name in
-                            ("Segoe UI", "DejaVu Sans", "Liberation Sans", "Helvetica")
-                            if name.lower() in families), font.nametofont("TkDefaultFont").actual("family"))
-        self.mono_font = font.nametofont("TkFixedFont").actual("family")
-        self.tk, self.ttk, self.root = tk, ttk, root
-        self.rows = []
-        self.solutions = []
-        self.inputs = []
-        self.plot_window = None
-        self.popup_plot = None
-        self.preview_job = None
-        self.suspend = False
-        self.last_format = "Azimuth"
+        self.root, self.model = root, InputModel([DraftSide() for _ in range(4)])
+        self.result, self.selected = None, 0
+        self.plot_window = self.popup = None
+        width, height = screen_geometry(root.winfo_screenwidth(), root.winfo_screenheight())
+        root.geometry(f"{width}x{height}+20+20")
+        root.minsize(min(850, width), min(500, height))
         root.title("Engineering 1035 · Traverse Solver")
-        root.geometry("1350x940")
-        root.minsize(1000, 760)
-        root.configure(bg="#edf2f7")
         style = ttk.Style(root)
         style.theme_use("clam")
+        root.configure(bg="#edf2f7")
         style.configure("TFrame", background="#edf2f7")
-        style.configure("TLabel", background="#edf2f7", foreground="#18314b", font=(self.ui_font, 10))
-        style.configure("TButton", padding=(12, 7), font=(self.ui_font, 10))
-        style.configure("Accent.TButton", background="#126d81", foreground="white")
-        style.configure("Treeview", rowheight=28, font=(self.ui_font, 10))
-        style.configure("Treeview.Heading", font=(self.ui_font, 10, "bold"))
-        style.configure("Case.TLabel", font=(self.ui_font, 11, "bold"), foreground="#126d81")
-        header = tk.Frame(root, bg="#18314b", padx=24, pady=15)
-        header.pack(fill="x")
-        tk.Label(header, text="ENGINEERING TRAVERSE SOLVER", bg="#18314b", fg="white",
-                 font=(self.ui_font, 21, "bold")).pack(anchor="w")
-        tk.Label(header, text="ENGINEERING 1035  /  Missing Length & Bearing Analysis", bg="#18314b",
-                 fg="#a9dce5", font=(self.ui_font, 11)).pack(anchor="w", pady=(4, 0))
-        main = ttk.Frame(root, padding=16)
+        style.configure("TLabel", background="#edf2f7", foreground="#18314b")
+        style.configure("Header.TLabel", background="#18314b", foreground="white")
+        style.configure("TButton", padding=(8, 5))
+        style.configure("Treeview", rowheight=25)
+        ttk.Label(root, text="ENGINEERING TRAVERSE SOLVER", font=("Helvetica", 17, "bold"),
+                  padding=10, style="Header.TLabel").pack(fill="x")
+        self.status = tk.StringVar(value="Ready · Load an example or enter your traverse.")
+        ttk.Label(root, textvariable=self.status, padding=(10, 5)).pack(side="bottom", fill="x")
+        main = ttk.Frame(root, padding=(10, 0, 10, 5))
         main.pack(fill="both", expand=True)
-        controls = ttk.Frame(main)
-        controls.pack(fill="x")
+        settings = ttk.Frame(main)
+        settings.pack(fill="x", pady=3)
         self.count = tk.StringVar(value="4")
-        self.format = tk.StringVar(value="Azimuth")
+        ttk.Label(settings, text="Sides").pack(side="left")
+        count = ttk.Spinbox(settings, from_=3, to=20, width=4,
+                            textvariable=self.count, command=self.resize)
+        count.pack(side="left", padx=(4, 12))
+        count.bind("<Return>", self.resize)
+        count.bind("<FocusOut>", self.resize)
+        self.origin_vars = []
+        for name, text in (("initial_n", "Initial N"), ("initial_e", "Initial E")):
+            ttk.Label(settings, text=text).pack(side="left")
+            variable = tk.StringVar(value=getattr(self.model, name))
+            self.origin_vars.append(variable)
+            entry = ttk.Entry(settings, textvariable=variable, width=12)
+            entry.pack(side="left", padx=(4, 12))
+            entry.bind("<KeyRelease>", lambda _, n=name, v=variable: self.change_origin(n, v.get()))
+            entry.bind("<FocusOut>", lambda _, n=name, v=variable: self.change_origin(n, v.get()))
         self.unit = tk.StringVar(value="m")
-        self.initial_n, self.initial_e = tk.StringVar(value="0"), tk.StringVar(value="0")
-        for column, (label, variable, width) in enumerate((
-            ("Number of sides", self.count, 7), ("Bearing format", self.format, 19),
-            ("Initial Northing", self.initial_n, 14), ("Initial Easting", self.initial_e, 14),
-            ("Distance unit", self.unit, 7))):
-            cell = ttk.Frame(controls, padding=(0, 0, 14, 8))
-            cell.grid(row=0, column=column, sticky="w")
-            ttk.Label(cell, text=label).pack(anchor="w", pady=(0, 4))
-            if variable is self.format or variable is self.unit:
-                values = ("Azimuth", "Quadrantal Bearing") if variable is self.format else ("m", "ft")
-                widget = ttk.Combobox(cell, textvariable=variable, values=values, state="readonly", width=width)
-                widget.pack()
-                if variable is self.format:
-                    widget.bind("<<ComboboxSelected>>", self.change_format)
-            elif variable is self.count:
-                ttk.Spinbox(cell, textvariable=variable, from_=3, to=20, width=width).pack()
-            else:
-                ttk.Entry(cell, textvariable=variable, width=width).pack()
-        ttk.Button(controls, text="Generate Traverse", command=self.generate).grid(row=0, column=5, padx=5)
-        ttk.Label(main, text="Angles: 125.5 or 125°30'00\" (also 125:30:00). "
-                  "Azimuth: 0° North, 90° East. Mark omitted values Unknown. Units label inputs; they do not convert them.").pack(anchor="w", pady=(2, 8))
-        self.case_label = ttk.Label(main, style="Case.TLabel", wraplength=1160)
-        self.case_label.pack(anchor="w", pady=(0, 8))
-        root.bind("<Configure>", lambda e: self.case_label.configure(wraplength=max(600, e.width - 50))
-                  if e.widget is root else None)
-        table_frame = ttk.Frame(main)
-        table_frame.pack(fill="x")
-        self.input_canvas = tk.Canvas(table_frame, height=160, bg="white", highlightthickness=0)
-        scroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.input_canvas.yview)
-        self.input_canvas.configure(yscrollcommand=scroll.set)
-        self.input_canvas.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
-        self.input_body = ttk.Frame(self.input_canvas, padding=8)
-        self.input_window = self.input_canvas.create_window((0, 0), window=self.input_body, anchor="nw")
-        self.input_body.bind("<Configure>", lambda _: self.input_canvas.configure(scrollregion=self.input_canvas.bbox("all")))
-        self.input_canvas.bind("<Configure>", lambda e: self.input_canvas.itemconfigure(self.input_window, width=e.width))
-        toolbar = ttk.Frame(main, padding=(0, 10))
-        toolbar.pack(fill="x")
-        ttk.Button(toolbar, text="Solve Traverse", style="Accent.TButton", command=self.solve).pack(side="left", padx=(0, 6))
-        ttk.Button(toolbar, text="Clear", command=self.clear).pack(side="left", padx=6)
-        self.example_case = tk.StringVar(value="Case I")
-        ttk.Combobox(toolbar, textvariable=self.example_case, values=("Case I", "Case II", "Case III", "Case IV"),
-                     state="readonly", width=9).pack(side="left", padx=(16, 4))
-        ttk.Button(toolbar, text="Load Example", command=self.load_example).pack(side="left", padx=4)
-        self.plot_button = ttk.Button(toolbar, text="Plot Traverse", command=self.plot, state="disabled")
-        self.plot_button.pack(side="right", padx=(6, 0))
-        self.export_button = ttk.Button(toolbar, text="Export Results", command=self.export, state="disabled")
+        unit = ttk.Combobox(settings, textvariable=self.unit, values=("m", "ft"),
+                            state="readonly", width=4)
+        unit.pack(side="left")
+        unit.bind("<<ComboboxSelected>>", self.change_unit)
+        ttk.Button(settings, text="Save Inputs", command=lambda: self.input_file(False)).pack(
+            side="right", padx=4)
+        ttk.Button(settings, text="Load Inputs", command=lambda: self.input_file(True)).pack(
+            side="right")
+        ttk.Label(main, text="Bearings: 125.5 · 125°30'00\" · N 30° E. "
+                  "0°=North, 90°=East. Units label values; they do not convert them.").pack(
+                      anchor="w", pady=3)
+        actions = ttk.Frame(main)
+        actions.pack(fill="x", pady=3)
+        ttk.Button(actions, text="Solve Traverse", command=self.solve).pack(side="left")
+        self.example_case = ttk.Combobox(actions,
+                                         values=("Case I", "Case II", "Case III", "Case IV"),
+                                         state="readonly", width=9)
+        self.example_case.current(0)
+        self.example_case.pack(side="left", padx=(12, 4))
+        ttk.Button(actions, text="Load Example", command=self.load_example).pack(side="left")
+        ttk.Button(actions, text="Clear", command=self.clear).pack(side="left", padx=4)
+        self.export_button = ttk.Button(actions, text="Export Results", command=self.export)
         self.export_button.pack(side="right")
-        solution_bar = ttk.Frame(main)
-        solution_bar.pack(fill="x", pady=(0, 7))
-        self.solution_label = ttk.Label(solution_bar, text="Solve a traverse to view its results.")
-        self.solution_label.pack(side="left")
-        self.solution_choice = ttk.Combobox(solution_bar, state="disabled", width=16)
-        self.solution_choice.pack(side="right")
-        self.solution_choice.bind("<<ComboboxSelected>>", lambda _: self.show_solution())
-        self.result_panes = ttk.Panedwindow(main, orient="horizontal")
+        self.plot_button = ttk.Button(actions, text="Enlarge Plot", command=self.enlarge_plot)
+        self.plot_button.pack(side="right", padx=4)
+        self.case_label = ttk.Label(main, wraplength=1100)
+        self.case_label.pack(fill="x", pady=3)
+        self.panes = ttk.Panedwindow(main, orient="vertical")
+        self.panes.pack(fill="both", expand=True)
+        self.table = InputTable(self.panes, self.model, self.refresh)
+        self.panes.add(self.table.frame, weight=1)
+        results = ttk.Frame(self.panes)
+        self.panes.add(results, weight=2)
+        self.choice = ttk.Combobox(results, state="disabled")
+        self.choice.pack(fill="x", pady=(4, 2))
+        self.choice.bind("<<ComboboxSelected>>", self.select_solution)
+        self.result_panes = ttk.Panedwindow(results, orient="horizontal")
         self.result_panes.pack(fill="both", expand=True)
         tabs = ttk.Notebook(self.result_panes)
-        self.result_panes.add(tabs, weight=3)
-        plot_frame = ttk.LabelFrame(self.result_panes, text="Traverse Plot · Live preview", padding=4)
-        self.result_panes.add(plot_frame, weight=2)
-        self.result_panes.bind("<Map>", lambda _: root.after_idle(
-            lambda: self.result_panes.sashpos(0, int(self.result_panes.winfo_width() * 0.53))))
-        self.embedded_plot = TraversePlot(plot_frame)
-        self.summary = self.text_tab(tabs, "Results")
-        calculations = ttk.Frame(tabs)
-        tabs.add(calculations, text="Calculation Table")
-        self.calculation_table = self.tree(calculations, TABLE_HEADERS)
-        coordinates = ttk.Frame(tabs)
-        tabs.add(coordinates, text="Coordinates")
-        self.coordinate_table = self.tree(coordinates, ("Point", "Northing", "Easting"))
-        self.details_box = self.text_tab(tabs, "Calculation Details")
-        self.status = tk.StringVar(value="Ready · Load an example or enter 3–20 sides.")
-        ttk.Label(main, textvariable=self.status).pack(anchor="w", pady=(8, 0))
-        for variable in (self.initial_n, self.initial_e, self.unit, self.count):
-            variable.trace_add("write", self.invalidate)
-        self.generate()
+        self.result_panes.add(tabs, weight=1)
+        frame, self.summary = text_panel(tabs)
+        tabs.add(frame, text="Results")
+        frame, self.details = text_panel(tabs)
+        tabs.add(frame, text="Calculation Details")
+        frame = ttk.Frame(tabs)
+        tabs.add(frame, text="Side Calculations & Coordinates")
+        self.calculations = ttk.Treeview(frame, columns=TABLE_HEADERS, show="headings", height=4)
+        for column in TABLE_HEADERS:
+            self.calculations.heading(column, text=column)
+            self.calculations.column(column, width=120, stretch=False)
+        horizontal = ttk.Scrollbar(frame, orient="horizontal", command=self.calculations.xview)
+        vertical = ttk.Scrollbar(frame, command=self.calculations.yview)
+        self.calculations.configure(xscrollcommand=horizontal.set, yscrollcommand=vertical.set)
+        horizontal.pack(side="bottom", fill="x")
+        vertical.pack(side="right", fill="y")
+        self.calculations.pack(fill="both", expand=True)
+        plot_frame = ttk.Frame(self.result_panes)
+        self.result_panes.add(plot_frame, weight=1)
+        self.plot = PlotView(plot_frame)
+        self.panes.bind("<Map>", lambda _: root.after_idle(self.balance_panes))
+        self.refresh()
 
-    def text_tab(self, tabs, title):
-        frame = self.ttk.Frame(tabs)
-        tabs.add(frame, text=title)
-        text = self.tk.Text(frame, wrap="word", height=10, width=60, font=(self.mono_font, 11), bg="white", fg="#18314b",
-                            relief="flat", padx=16, pady=12, state="disabled")
-        scrollbar = self.ttk.Scrollbar(frame, command=text.yview)
-        text.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        text.pack(fill="both", expand=True)
-        return text
+    def balance_panes(self):
+        self.panes.sashpos(0, int(self.panes.winfo_height() * 0.33))
+        self.result_panes.sashpos(0, int(self.result_panes.winfo_width() * 0.52))
 
-    def tree(self, frame, headers):
-        tree = self.ttk.Treeview(frame, columns=headers, show="headings")
-        for name in headers:
-            tree.heading(name, text=name)
-            tree.column(name, width=155 if name == "Bearing" else 135, anchor="e", stretch=False)
-        vertical = self.ttk.Scrollbar(frame, command=tree.yview)
-        horizontal = self.ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
-        tree.configure(yscrollcommand=vertical.set, xscrollcommand=horizontal.set)
-        tree.grid(row=0, column=0, sticky="nsew")
-        vertical.grid(row=0, column=1, sticky="ns")
-        horizontal.grid(row=1, column=0, sticky="ew")
-        frame.rowconfigure(0, weight=1)
-        frame.columnconfigure(0, weight=1)
-        return tree
-
-    @staticmethod
-    def set_text(widget, value):
-        widget.configure(state="normal")
-        widget.delete("1.0", "end")
-        widget.insert("1.0", value)
-        widget.configure(state="disabled")
-
-    def invalidate(self, *_):
-        if self.suspend:
-            return
-        self.solutions = []
-        self.plot_button.configure(state="disabled")
-        self.export_button.configure(state="disabled")
-        self.solution_choice.configure(state="disabled", values=())
-        self.solution_choice.set("")
-        self.solution_label.configure(text="Inputs changed — solve to refresh results.")
-        self.set_text(self.summary, "Enter known values and mark exactly two quantities Unknown.")
-        self.set_text(self.details_box, "")
-        for tree in (self.calculation_table, self.coordinate_table):
-            tree.delete(*tree.get_children())
-        self.update_case()
-        if self.embedded_plot.data is not None:
-            self.embedded_plot.render(None, self.unit.get(), "Inputs changed — updating preview…")
-        if self.preview_job is not None:
-            self.root.after_cancel(self.preview_job)
-        self.preview_job = self.root.after(180, self.refresh_preview)
-
-    def update_case(self):
+    def refresh(self, data_changed=False):
+        if data_changed:
+            self.result = None
+            self.status.set("Inputs changed · Solve to update results.")
         try:
-            flags = [TraverseSide(None if r["ls"].get() == "Unknown" else 1,
-                                  None if r["bs"].get() == "Unknown" else 0) for r in self.rows]
-            self.case_label.configure(text="Detected: " + CASES[detect_case(flags)])
-        except TraverseError as error:
-            self.case_label.configure(text="Detected case: " + str(error))
+            self.case_label.configure(text="Detected: " + CASES[self.model.case()])
+        except TraverseError:
+            self.case_label.configure(
+                text="Mark two unknown quantities to select Case I–IV automatically.")
+        self.calculations.delete(*self.calculations.get_children())
+        self.export_button.configure(state="normal" if self.result else "disabled")
+        can_plot = self.result is not None and self.plot.figure is not None
+        self.plot_button.configure(state="normal" if can_plot else "disabled")
+        if self.result:
+            labels = [f"Solution {i + 1} — {s.geometry_label}"
+                      for i, s in enumerate(self.result.solutions)]
+            self.choice.configure(state="readonly", values=labels)
+            self.selected = min(self.selected, len(labels) - 1)
+            self.choice.current(self.selected)
+            set_text(self.summary, solution_summary(self.model, self.result, self.selected))
+            set_text(self.details, self.result.details)
+            for row in calculation_rows(self.result.solutions[self.selected]):
+                values = [f"{v:.4f}" if isinstance(v, float) else v for v in row]
+                values[3] = display_azimuth(row[3])
+                self.calculations.insert("", "end", values=values)
+        else:
+            self.choice.configure(state="disabled", values=())
+            self.choice.set("")
+            set_text(self.summary, "Enter known values, mark two Unknown fields, then solve.")
+            set_text(self.details, "")
+        self.plot.render(self.model, self.result, self.selected)
+        if self.popup:
+            self.popup.render(self.model, self.result, self.selected)
 
-    def generate(self):
-        from tkinter import messagebox
+    def resize(self, *_):
         try:
+            if not re.fullmatch(r"[0-9]+", self.count.get()):
+                raise TraverseError("Enter an integer side count from 3 to 20.")
             count = int(self.count.get())
-            if not 3 <= count <= 20:
-                raise ValueError
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Number of sides must be an integer from 3 to 20.", parent=self.root)
-            return
-        self.suspend = True
-        for child in self.input_body.winfo_children():
-            child.destroy()
-        self.rows = []
-        for column, label in enumerate(("Side", "Length", "Length Status", "N/S", "Angle / Azimuth", "E/W", "Bearing Status")):
-            self.ttk.Label(self.input_body, text=label, font=(self.ui_font, 10, "bold")).grid(row=0, column=column, sticky="w", padx=7, pady=5)
-        self.input_body.columnconfigure(4, weight=1)
-        for i in range(count):
-            row = {name: self.tk.StringVar(value=value) for name, value in
-                   (("length", ""), ("ls", "Known"), ("angle", ""), ("bs", "Known"), ("ns", "N"), ("ew", "E"))}
-            self.ttk.Label(self.input_body, text=f"{i + 1:02d}").grid(row=i + 1, column=0, padx=7)
-            widgets = [self.ttk.Entry(self.input_body, textvariable=row["length"], width=15),
-                       self.ttk.Combobox(self.input_body, textvariable=row["ls"], values=("Known", "Unknown"), width=10, state="readonly"),
-                       self.ttk.Combobox(self.input_body, textvariable=row["ns"], values=("N", "S"), width=4, state="readonly"),
-                       self.ttk.Entry(self.input_body, textvariable=row["angle"], width=25),
-                       self.ttk.Combobox(self.input_body, textvariable=row["ew"], values=("E", "W"), width=4, state="readonly"),
-                       self.ttk.Combobox(self.input_body, textvariable=row["bs"], values=("Known", "Unknown"), width=10, state="readonly")]
-            row["widgets"] = widgets
-            for column, widget in enumerate(widgets, 1):
-                widget.grid(row=i + 1, column=column, sticky="ew", padx=7, pady=3)
-            self.rows.append(row)
-            for name in ("length", "ls", "angle", "bs", "ns", "ew"):
-                row[name].trace_add("write", lambda *_, r=row: self.row_changed(r))
-            self.row_changed(row)
-        self.suspend = False
-        self.invalidate()
-        self.input_canvas.yview_moveto(0)
-        self.status.set(f"Generated {count} sides. Enter lengths in {self.unit.get()}.")
-
-    def row_changed(self, row):
-        widgets = row["widgets"]
-        widgets[0].configure(state="disabled" if row["ls"].get() == "Unknown" else "normal")
-        bearing_known = row["bs"].get() == "Known"
-        widgets[3].configure(state="normal" if bearing_known else "disabled")
-        for widget in (widgets[2], widgets[4]):
-            widget.configure(state="readonly" if bearing_known and self.format.get() == "Quadrantal Bearing" else "disabled")
-        self.invalidate()
-
-    def change_format(self, *_):
-        new_format = self.format.get()
-        if new_format == self.last_format:
-            return
-        # Convert transactionally: an invalid row must not silently change its meaning.
-        converted = []
-        try:
-            for i, row in enumerate(self.rows, 1):
-                if not row["angle"].get().strip() or row["bs"].get() == "Unknown":
-                    converted.append(None)
-                    continue
-                text = row["angle"].get()
-                if self.last_format == "Quadrantal Bearing":
-                    text = f'{row["ns"].get()} {text} {row["ew"].get()}'
-                converted.append(parse_bearing(text))
+            if count != len(self.model.rows):
+                self.model.resize(count)
+                self.table.rebuild()
+                self.refresh(data_changed=True)
+            return True
         except TraverseError as error:
-            from tkinter import messagebox
-            self.format.set(self.last_format)
-            messagebox.showerror("Invalid Bearing", f"Side {i}: {error}\nCorrect this bearing before switching formats.", parent=self.root)
-            return
-        self.suspend = True
-        for row, angle in zip(self.rows, converted):
-            if angle is not None:
-                if new_format == "Quadrantal Bearing":
-                    ns, value, ew = quadrant_parts(angle)
-                    row["ns"].set(ns)
-                    row["ew"].set(ew)
-                    row["angle"].set(f"{value:.12g}")
-                else:
-                    row["angle"].set(f"{angle:.12g}")
-            elif row["bs"].get() == "Unknown":
-                row["angle"].set("")
-            self.row_changed(row)
-        self.last_format = new_format
-        self.suspend = False
-        self.invalidate()
+            self.count.set(str(len(self.model.rows)))
+            messagebox.showerror("Invalid Side Count", str(error), parent=self.root)
+            return False
 
-    def clear(self):
-        self.suspend = True
-        self.initial_n.set("0")
-        self.initial_e.set("0")
-        for row in self.rows:
-            for key, value in (("length", ""), ("angle", ""), ("ls", "Known"), ("bs", "Known"), ("ns", "N"), ("ew", "E")):
-                row[key].set(value)
-        self.suspend = False
-        self.invalidate()
-        self.status.set("Cleared · Enter a new traverse.")
+    def change_origin(self, name, value):
+        if value != getattr(self.model, name):
+            setattr(self.model, name, value)
+            self.refresh(data_changed=True)
+
+    def change_unit(self, *_):
+        self.model.unit = self.unit.get()
+        self.refresh()
+
+    def select_solution(self, *_):
+        self.selected = self.choice.current()
+        self.refresh()
+
+    def replace_model(self, model):
+        self.model = self.table.model = model
+        self.count.set(str(len(model.rows)))
+        self.origin_vars[0].set(model.initial_n)
+        self.origin_vars[1].set(model.initial_e)
+        self.unit.set(model.unit)
+        self.table.rebuild()
+        self.selected = 0
+        self.refresh(data_changed=True)
 
     def load_example(self):
-        index = ("Case I", "Case II", "Case III", "Case IV").index(self.example_case.get())
-        self.count.set("4")
-        self.generate()
-        self.suspend = True
-        self.initial_n.set("0")
-        self.initial_e.set("0")
-        for row, side in zip(self.rows, example(index)):
-            row["ls"].set("Unknown" if side.length is None else "Known")
-            row["length"].set("" if side.length is None else str(side.length))
-            row["bs"].set("Unknown" if side.azimuth is None else "Known")
-            if side.azimuth is not None:
-                ns, angle, ew = quadrant_parts(side.azimuth)
-                row["ns"].set(ns)
-                row["ew"].set(ew)
-                row["angle"].set(str(angle if self.format.get() == "Quadrantal Bearing" else side.azimuth))
-        self.suspend = False
-        self.invalidate()
-        self.status.set(f"Loaded {self.example_case.get()}: 80 × 100 rectangle. Click Solve Traverse.")
+        self.replace_model(InputModel.from_example(self.example_case.current()))
 
-    def read_inputs(self):
-        if self.count.get().strip() != str(len(self.rows)):
-            raise TraverseError("Click Generate Traverse to apply the changed number of sides.")
-        sides = []
-        for i, row in enumerate(self.rows, 1):
-            try:
-                length = None if row["ls"].get() == "Unknown" else number(row["length"].get(), "Length")
-                angle = None
-                if row["bs"].get() == "Known":
-                    text = row["angle"].get()
-                    if self.format.get() == "Quadrantal Bearing":
-                        text = f'{row["ns"].get()} {text} {row["ew"].get()}'
-                    angle = parse_bearing(text)
-                sides.append(TraverseSide(length, angle))
-            except TraverseError as error:
-                raise TraverseError(f"Side {i}: {error}") from None
-        return sides
+    def clear(self):
+        self.replace_model(InputModel([DraftSide() for _ in self.model.rows], unit=self.model.unit))
 
     def solve(self):
-        from tkinter import messagebox
-        try:
-            inputs = self.read_inputs()
-            case, solutions, details = TraverseSolver().solve(inputs,
-                number(self.initial_e.get(), "Initial Easting"), number(self.initial_n.get(), "Initial Northing"))
-        except (TraverseError, OverflowError, ArithmeticError) as error:
-            self.status.set("Cannot solve · Check inputs and geometric constraints.")
-            messagebox.showerror("Cannot Solve", str(error), parent=self.root)
-            return
-        self.inputs, self.case, self.solutions, self.details = inputs, case, solutions, details
-        self.solution_choice.configure(values=[f"Solution {i + 1}" for i in range(len(solutions))], state="readonly")
-        self.solution_choice.current(0)
-        self.solution_label.configure(text=(f"{len(solutions)} valid solutions — use engineering constraints to choose."
-                                           if len(solutions) > 1 else "One valid solution · Closure verified"))
-        self.plot_button.configure(state="normal")
-        self.export_button.configure(state="normal")
-        self.show_solution()
-        self.status.set(f"Solved · {len(solutions)} solution(s), each verified against both closure equations.")
-
-    def show_solution(self):
-        if not self.solutions:
-            return
-        index = max(0, self.solution_choice.current())
-        solution = self.solutions[index]
-        unit = self.unit.get()
-        lines = [CASES[self.case], f"Solution {index + 1} of {len(self.solutions)}", "", "SOLVED VALUES"]
-        for i, (original, solved) in enumerate(zip(self.inputs, solution.sides), 1):
-            if original.length is None:
-                lines.append(f"Side {i} Length: {solved.length:.4f} {unit}")
-            if original.azimuth is None:
-                lines.append(f"Side {i} Bearing: {display_azimuth(solved.azimuth)}°  /  {quadrantal(solved.azimuth)}")
-        area = f"{solution.area:,.4f} {unit}²" if solution.area is not None else "Unavailable — see warning"
-        lines += ["", "TRAVERSE SUMMARY", f"Perimeter: {solution.perimeter:,.4f} {unit}",
-                  f"Traverse Area: {area}", f"ΣΔE / Easting misclosure: {solution.sum_e:.10g} {unit}",
-                  f"ΣΔN / Northing misclosure: {solution.sum_n:.10g} {unit}",
-                  f"Linear Closure Error: {solution.closure:.10g} {unit}",
-                  f"Relative Precision: {solution.precision}", "",
-                  "Closure is imposed by solving the omitted values. Numerical closure does not measure survey accuracy."]
-        if len(self.solutions) > 1:
-            lines += ["", "MULTIPLE SOLUTIONS: Review each solution using the selector above. "
-                      "Both satisfy the supplied equations; extra engineering constraints are needed to choose."]
-        lines += ["\nWARNING: " + warning for warning in solution.warnings]
-        self.set_text(self.summary, "\n".join(lines))
-        self.set_text(self.details_box, self.details)
-        self.calculation_table.delete(*self.calculation_table.get_children())
-        for row in calculation_rows(solution):
-            values = [f"{value:.4f}" if isinstance(value, float) else value for value in row]
-            values[3] = display_azimuth(row[3])
-            self.calculation_table.insert("", "end", values=values)
-        self.coordinate_table.delete(*self.coordinate_table.get_children())
-        for i, (east, north) in enumerate(solution.coordinates):
-            name = f"P{i + 1}" if i < len(solution.sides) else "Return to P1"
-            self.coordinate_table.insert("", "end", values=(name, f"{north:.4f}", f"{east:.4f}"))
-        if self.preview_job is not None:
-            self.root.after_cancel(self.preview_job)
-            self.preview_job = None
-        self.draw_plot()
-
-    def refresh_preview(self):
-        if self.preview_job is not None:
-            self.root.after_cancel(self.preview_job)
-        self.preview_job = None
-        if self.solutions:
-            self.draw_plot()
+        if not self.resize():
             return
         try:
-            sides = self.read_inputs()
-            for side in sides:
-                if side.length is not None and side.length <= 0:
-                    raise TraverseError("Known lengths must be positive.")
-            data = build_plot_data(sides, number(self.initial_e.get(), "Initial Easting"),
-                                   number(self.initial_n.get(), "Initial Northing"))
-        except (TraverseError, ArithmeticError, ValueError) as error:
-            self.embedded_plot.render(None, self.unit.get(), f"Preview unavailable: {error}")
-            if self.popup_plot is not None:
-                self.popup_plot.render(None, self.unit.get(), f"Preview unavailable: {error}")
-            self.plot_button.configure(state="disabled")
+            result = solve_traverse(self.model.sides(), self.model.initial_e, self.model.initial_n)
+        except (TraverseError, ArithmeticError) as error:
+            message = str(error) if isinstance(error, TraverseError) else (
+                "Values exceed the supported numeric range. Use smaller lengths or "
+                "coordinates, or choose units that keep the entered values manageable.")
+            messagebox.showerror("Cannot Solve", message, parent=self.root)
             return
-        self.plot_button.configure(state="normal")
-        self.embedded_plot.render(data, self.unit.get())
-        if self.popup_plot is not None:
-            self.popup_plot.render(data, self.unit.get())
+        self.result, self.selected = result, 0
+        self.refresh()
+        self.status.set(f"Solved · {len(result.solutions)} equation solution(s). "
+                        "Review geometry warnings.")
 
-    def close_plot(self):
-        if self.plot_window is not None:
-            self.plot_window.destroy()
-            self.plot_window = None
-        self.popup_plot = None
-
-    def plot(self):
-        if self.preview_job is not None:
-            self.root.after_cancel(self.preview_job)
-            self.preview_job = None
-        if not self.solutions:
-            self.refresh_preview()
-        if self.embedded_plot.data is None:
-            return
-        if self.plot_window is None:
-            self.plot_window = self.tk.Toplevel(self.root)
-            self.plot_window.title("Engineering Traverse Plot")
-            self.plot_window.geometry("820x680")
-            self.plot_window.protocol("WM_DELETE_WINDOW", self.close_plot)
-            self.popup_plot = TraversePlot(self.plot_window)
-        self.popup_plot.render(self.embedded_plot.data, self.unit.get())
-        self.plot_window.lift()
-
-    def draw_plot(self):
-        if not self.solutions:
-            return
-        index = max(0, self.solution_choice.current())
-        data = build_plot_data(self.inputs, solution=self.solutions[index], solution_index=index)
-        self.embedded_plot.render(data, self.unit.get())
-        if self.popup_plot is not None:
-            self.popup_plot.render(data, self.unit.get())
-
-    def export(self):
-        from tkinter import filedialog, messagebox
-        if not self.solutions:
-            return
-        path = filedialog.asksaveasfilename(parent=self.root, title="Export all solutions", defaultextension=".txt",
-                                          initialfile="traverse_results.txt", filetypes=(("Text report", "*.txt"), ("CSV report", "*.csv")))
+    def input_file(self, loading):
+        path = (filedialog.askopenfilename if loading else filedialog.asksaveasfilename)(
+            parent=self.root, defaultextension=".json", filetypes=(("Traverse inputs", "*.json"),))
         if not path:
             return
         try:
-            export_report(path, self.inputs, self.case, self.solutions, self.details,
-                          self.unit.get(), max(0, self.solution_choice.current()))
-        except OSError as error:
-            messagebox.showerror("Export Failed", str(error), parent=self.root)
+            if loading:
+                self.replace_model(InputModel.load(path))
+            else:
+                self.model.save(path)
+            self.status.set("Inputs loaded." if loading else
+                            "Inputs saved (including unknown flags).")
+        except (OSError, ValueError, TypeError) as error:
+            messagebox.showerror("Input File Error", str(error), parent=self.root)
+
+    def enlarge_plot(self):
+        if self.result is None or self.plot.figure is None:
             return
-        self.status.set(f"Exported all {len(self.solutions)} solution(s) to {Path(path).name}.")
+        if self.plot_window is None:
+            self.plot_window = tk.Toplevel(self.root)
+            width, height = screen_geometry(self.root.winfo_screenwidth(),
+                                             self.root.winfo_screenheight())
+            self.plot_window.geometry(f"{min(850, width)}x{height}+30+20")
+            self.plot_window.title("Solved Traverse Plot")
+            self.popup = PlotView(self.plot_window)
+            self.plot_window.protocol("WM_DELETE_WINDOW", self.close_plot)
+        self.popup.render(self.model, self.result, self.selected)
+        self.plot_window.lift()
 
+    def close_plot(self):
+        self.plot_window.destroy()
+        self.plot_window = self.popup = None
 
-class SolverTests(unittest.TestCase):
-    def test_preview_and_solved_plot_geometry(self):
-        for case in range(4):
-            sides = example(case)
-            data = build_plot_data(sides, 120, 340)
-            self.assertEqual(data.points[0], (120, 340))
-            self.assertEqual(data.points[4], (120, 340))
-            self.assertTrue(any(kind == "unknown" for _, _, kind in data.edges))
-            self.assertIn("assume closure", data.note)
-            _, solutions, _ = TraverseSolver().solve(sides, 120, 340)
-            for i, solution in enumerate(solutions):
-                plotted = build_plot_data(sides, solution=solution, solution_index=i)
-                self.assertEqual(len(plotted.edges), 4)
-                self.assertEqual(list(plotted.points.values()), solution.coordinates)
-                expected = sum(s.length is None or s.azimuth is None for s in sides)
-                self.assertEqual(sum(kind == "solved" for _, _, kind in plotted.edges), expected)
-        separated = example(1)
-        data = build_plot_data(separated)
-        self.assertNotIn(2, data.points)
-        self.assertIn("cannot yet be positioned", data.note)
-        self.assertIn((0, 3, "unknown"), data.edges)
-        all_known = [TraverseSide(1, 0), TraverseSide(1, 90), TraverseSide(1, 180)]
-        data = build_plot_data(all_known)
-        self.assertNotEqual(data.points[3], data.points[0])
-        self.assertTrue(all(kind == "known" for _, _, kind in data.edges))
-
-    def test_all_examples(self):
-        for case in range(4):
-            with self.subTest(case=case):
-                detected, solutions, details = TraverseSolver().solve(example(case), 1500, 2200)
-                self.assertEqual(detected, case)
-                self.assertIn("Closure equations", details)
-                self.assertTrue(solutions)
-                for solution in solutions:
-                    self.assertLess(solution.closure, 1e-8)
-                    self.assertAlmostEqual(solution.perimeter, 360)
-                    self.assertAlmostEqual(solution.coordinates[-1][0], 1500)
-                    self.assertAlmostEqual(solution.coordinates[-1][1], 2200)
-                self.assertAlmostEqual(solutions[0].area, 8000)
-
-    def test_bearings_and_dms(self):
-        for text, expected in (("N 30° E", 30), ("S 45 E", 135), ("S 20 W", 200),
-                               ("N 70 W", 290), ("125°30'00\"", 125.5), ("125:30:00", 125.5),
-                               ("125 30 00", 125.5), ("360°", 0), ("N 0 W", 0)):
-            self.assertAlmostEqual(parse_bearing(text), expected)
-        for text in ("-1", "361", "nan", "inf", "N 91 E", "N 30 N", "20°60'00\"", "20:10:60", "", "1e3"):
-            with self.subTest(text=text), self.assertRaises(TraverseError):
-                parse_bearing(text)
-        self.assertEqual(azimuth(-1e-20, 1), 0)
-        self.assertEqual(display_azimuth(359.999999999), "0.0000")
-        self.assertEqual(dms(12 + 59 / 60 + 59.999 / 3600), "13°00'00.00\"")
-        for angle in range(360):
-            self.assertAlmostEqual(parse_bearing(quadrantal(angle)), angle)
-
-    def test_case_ii_two_positive_roots(self):
-        # target=(0, 5), unknown northward length, other length=2 -> x=3 or 7.
-        sides = [TraverseSide(None, 0), TraverseSide(2, None), TraverseSide(5, 180)]
-        _, solutions, _ = TraverseSolver().solve(sides)
-        self.assertEqual(len(solutions), 2)
-        self.assertEqual({round(s.sides[0].length) for s in solutions}, {3, 7})
-
-    def test_case_ii_no_intersection_and_tangent(self):
-        with self.assertRaises(TraverseError):
-            TraverseSolver().solve([TraverseSide(None, 0), TraverseSide(2, None), TraverseSide(5, 270)])
-        _, solutions, _ = TraverseSolver().solve([TraverseSide(None, 0), TraverseSide(5, None),
-                                                  TraverseSide(math.sqrt(34), azimuth(-5, -3))])
-        self.assertEqual(len(solutions), 1)
-        self.assertAlmostEqual(solutions[0].sides[0].length, 3, places=6)
-
-    def test_case_iv_mirrors_and_tangent(self):
-        _, solutions, _ = TraverseSolver().solve(example(3))
-        self.assertEqual(len(solutions), 2)
-        sides = [TraverseSide(3, None), TraverseSide(2, None), TraverseSide(5, 180)]
-        self.assertEqual(len(TraverseSolver().solve(sides)[1]), 1)
-
-    def test_impossible_singular_and_indeterminate(self):
-        datasets = [
-            [TraverseSide(None, 0), TraverseSide(None, 180), TraverseSide(3, 90)],
-            [TraverseSide(1, None), TraverseSide(1, None), TraverseSide(5, 90)],
-            [TraverseSide(1, None), TraverseSide(1, None), TraverseSide(3, 0), TraverseSide(3, 180)],
-            [TraverseSide(None, None), TraverseSide(3, 0), TraverseSide(3, 180)],
-            [TraverseSide(None, 0), TraverseSide(None, 90), TraverseSide(5, 45)],
-            [TraverseSide(None, None), TraverseSide(-2, 90), TraverseSide(3, 180)],
-            [TraverseSide(None, None), TraverseSide(float("nan"), 90), TraverseSide(3, 180)],
-        ]
-        for sides in datasets:
-            with self.subTest(sides=sides), self.assertRaises(TraverseError):
-                TraverseSolver().solve(sides)
-        for sides in (example(0)[:2], [TraverseSide(1, 0)] * 4, [TraverseSide(None, None)] * 4):
-            with self.assertRaises(TraverseError):
-                TraverseSolver().solve(sides)
-
-    def test_area_and_large_coordinate_offset(self):
-        _, solutions, _ = TraverseSolver().solve(example(0), 1e12, -1e12)
-        self.assertAlmostEqual(solutions[0].area, 8000)
-        area, warnings = polygon_area([(0, 0), (2, 2), (0, 2), (2, 0), (0, 0)], 1e-9)
-        self.assertIsNone(area)
-        self.assertTrue(warnings)
-
-    def test_report_export(self):
-        import tempfile
-        sides = example(3)
-        case, solutions, details = TraverseSolver().solve(sides)
-        with tempfile.TemporaryDirectory() as directory:
-            for extension in ("txt", "csv"):
-                path = Path(directory) / f"report.{extension}"
-                export_report(path, sides, case, solutions, details, "ft")
-                content = path.read_text(encoding="utf-8-sig")
-                for required in ("Input Data", "Solved Unknowns", "Coordinates", "Perimeter", "Area",
-                                 "Closure Error", "Relative Precision", "CALCULATION DETAILS", "ft²"):
-                    self.assertIn(required, content)
-                if extension == "csv":
-                    rows = list(csv.reader(io.StringIO(content)))
-                    self.assertIn(["Solution", "2"], rows)
-
-    def test_rotated_scaled_traverses(self):
-        # A nonrectangular pentagon exercises arbitrary bearings and all unknown placements.
-        points = [(0, 0), (3, 5), (9, 6), (12, 2), (5, -3)]
-        complete = []
-        for first, second in zip(points, points[1:] + points[:1]):
-            e, n = second[0] - first[0], second[1] - first[1]
-            complete.append(TraverseSide(math.hypot(e, n), azimuth(e, n)))
-        for scale in (1e-5, 1, 1e7):
-            for rotation in (0, 33, 181, 299):
-                sides = [TraverseSide(s.length * scale, (s.azimuth + rotation) % 360) for s in complete]
-                for case in range(4):
-                    for i in range(5):
-                        j = (i + 1) % 5
-                        inputs = list(sides)
-                        if case == 0:
-                            inputs[i] = TraverseSide(None, None)
-                        elif case == 1:
-                            inputs[i] = replace(inputs[i], length=None)
-                            inputs[j] = replace(inputs[j], azimuth=None)
-                        elif case == 2:
-                            inputs[i] = replace(inputs[i], length=None)
-                            inputs[j] = replace(inputs[j], length=None)
-                        else:
-                            inputs[i] = replace(inputs[i], azimuth=None)
-                            inputs[j] = replace(inputs[j], azimuth=None)
-                        _, solutions, _ = TraverseSolver().solve(inputs)
-                        self.assertTrue(any(TraverseSolver._same(s.sides, sides) for s in solutions))
-                        for solution in solutions:
-                            self.assertLessEqual(solution.closure, solution.tolerance)
-
-
-def gui_smoke_test(root, app):
-    """Exercise actual widgets, both bearing modes, plotting, and export dialogs."""
-    from unittest.mock import patch
-    import tempfile
-    for mode in ("Azimuth", "Quadrantal Bearing"):
-        app.format.set(mode)
-        app.change_format()
-        for case_name in ("Case I", "Case II", "Case III", "Case IV"):
-            app.example_case.set(case_name)
-            app.load_example()
-            app.refresh_preview()
-            assert any(kind == "unknown" for _, _, kind in app.embedded_plot.data.edges)
-            app.plot()
-            app.solve()
-            assert any(kind == "solved" for _, _, kind in app.embedded_plot.data.edges)
-            assert app.popup_plot.data is app.embedded_plot.data
-            assert app.solutions, (mode, case_name)
-            assert len(app.calculation_table.get_children()) == 4
-            assert len(app.coordinate_table.get_children()) == 5
-            app.plot()
-            root.update()
-            if len(app.solutions) > 1:
-                app.solution_choice.current(1)
-                app.show_solution()
-                root.update()
-            with tempfile.TemporaryDirectory() as directory:
-                for extension in ("txt", "csv"):
-                    target = str(Path(directory) / f"gui.{extension}")
-                    with patch("tkinter.filedialog.asksaveasfilename", return_value=target):
-                        app.export()
-                    assert Path(target).stat().st_size > 100
-            app.close_plot()
-    app.count.set("20")
-    app.generate()
-    assert len(app.rows) == 20
-    app.clear()
-    assert not app.solutions
-    with patch("tkinter.messagebox.showerror") as error:
-        app.solve()
-        assert error.called
-    # Exercise the built-in plot fallback even when Matplotlib is installed.
-    app.example_case.set("Case I")
-    app.load_example()
-    app.solve()
-    with patch.dict(sys.modules, {"matplotlib.figure": None}):
-        app.plot()
-        root.update()
-        assert app.popup_plot.figure is None
-        assert app.popup_plot.canvas.find_withtag("solved")
-    app.close_plot()
-    with patch.dict(sys.modules, {"matplotlib.figure": None}):
-        fallback_root = app.tk.Toplevel(root)
-        fallback_app = TraverseApp(fallback_root)
-        fallback_app.load_example()
-        fallback_app.refresh_preview()
-        root.update()
-        assert fallback_app.embedded_plot.figure is None
-        assert fallback_app.embedded_plot.canvas.find_withtag("unknown")
-        fallback_app.solve()
-        root.update()
-        assert fallback_app.embedded_plot.canvas.find_withtag("solved")
-        fallback_app.clear()
-        fallback_app.refresh_preview()
-        assert fallback_app.embedded_plot.data is None
-        fallback_root.destroy()
-    print("GUI smoke test passed: four cases, two bearing formats, solution selection, "
-          "live previews, embedded/pop-out Matplotlib and fallback plots, "
-          "TXT/CSV dialogs, 20 rows, clear, invalid input.")
+    def export(self):
+        if self.result is None:
+            return
+        path = filedialog.asksaveasfilename(parent=self.root, defaultextension=".txt",
+                    filetypes=(("Text report", "*.txt"), ("CSV report", "*.csv")))
+        if path:
+            try:
+                export_report(path, self.model, self.result, self.selected)
+                self.status.set("Exported all solutions and numerical details.")
+            except OSError as error:
+                messagebox.showerror("Export Failed", str(error), parent=self.root)
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--self-test", action="store_true", help="Run embedded mathematical regression tests")
-    parser.add_argument("--gui-test", action="store_true", help="Run GUI smoke test (requires a display)")
-    args = parser.parse_args()
-    if args.self_test:
-        suite = unittest.defaultTestLoader.loadTestsFromTestCase(SolverTests)
-        return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
-    try:
-        import tkinter as tk
-    except ImportError:
-        print("Tkinter is required. Install your Python distribution's Tk support (Ubuntu: python3-tk).", file=sys.stderr)
+    if tk is None:
+        print("Tkinter is required (Ubuntu/Debian: install python3-tk).", file=sys.stderr)
         return 1
     try:
         root = tk.Tk()
     except tk.TclError as error:
-        print(f"Cannot open the desktop display: {error}\nRun this app in a graphical desktop session. "
-              "Use --self-test for headless numerical validation.", file=sys.stderr)
+        print(f"A desktop display is required: {error}", file=sys.stderr)
         return 1
-    app = TraverseApp(root)
-    if args.gui_test:
-        try:
-            gui_smoke_test(root, app)
-        finally:
-            root.destroy()
-    else:
-        root.mainloop()
+    TraverseApp(root)
+    root.mainloop()
     return 0
 
 
